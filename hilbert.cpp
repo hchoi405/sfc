@@ -8,8 +8,8 @@ using namespace std;
 
 #define DIMS 3
 #define BITS 5
-#define PRINT_BITS DIMS + BITS + 10
-#define PRINT true
+#define PRINT_BITS DIMS + BITS
+#define PRINT false
 
 const int newline = 0;
 
@@ -41,7 +41,32 @@ void printWithBits(const string& name, Type v, int lv = 0, string prefix = "") {
 
 #define print(v, ...) printWithBits(#v, (v), ##__VA_ARGS__)
 
-void FromAxes(uint32_t* X, int b, int n)  // position, #bits, dimension
+uint64_t interleave(const uint32_t* X, const int b, const int n) {
+    uint64_t start = 1 << (DIMS * BITS - 1), sum = 0;
+    for (int i = b - 1; i >= 0; --i) {
+        for (int j = 0; j < n; ++j) {
+            // cout << (X[j] >> i & 1);
+            sum += (X[j] >> i & 1) * start;
+            start >>= 1;
+        }
+    }
+    return sum;
+}
+
+void deinterleave(uint32_t* X, const uint64_t v, const int b, const int n) {
+    // De-interleaving the sum into axes values
+    uint64_t src_pos = 1, dst_pos = 1;
+    for (int i = 0; i < BITS; ++i) {
+        for (int j = DIMS - 1; j >= 0; --j) {
+            X[j] ^= (-(uint32_t)((v & dst_pos) != 0) ^ X[j]) & src_pos;
+            dst_pos <<= 1;
+        }
+        src_pos <<= 1;
+    }
+}
+
+void FromAxes(uint32_t* X, const int b,
+              const int n)  // position, #bits, dimension
 {
     uint32_t M = 1 << (b - 1), P, Q, t;
     print(M, 0);
@@ -106,7 +131,6 @@ void FromAxes(uint32_t* X, int b, int n)  // position, #bits, dimension
 uint64_t encode(uint32_t* X) {
     print(newline);
 
-    cout << "--------------[ Encode ]--------------" << endl;
     print(X[0], 0, "initial");
     print(X[1], 0, "initial");
 #if DIMS == 3
@@ -125,14 +149,7 @@ uint64_t encode(uint32_t* X) {
 #endif
 
     // Interleaving the values of axes
-    uint64_t start = 1 << (DIMS * BITS - 1), sum = 0;
-    for (int i = BITS - 1; i >= 0; --i) {
-        for (int j = 0; j < DIMS; ++j) {
-            // cout << (X[j] >> i & 1);
-            sum += (X[j] >> i & 1) * start;
-            start >>= 1;
-        }
-    }
+    uint64_t sum = interleave(X, BITS, DIMS);
 
     print(newline);
 
@@ -141,7 +158,8 @@ uint64_t encode(uint32_t* X) {
     return sum;
 }
 
-void ToAxes(uint32_t* X, int b, int n)  // position, #bits, dimension
+void ToAxes(uint32_t* X, const int b,
+            const int n)  // position, #bits, dimension
 {
     uint32_t N = 2 << (b - 1), P, Q, t;
     int i;
@@ -151,7 +169,7 @@ void ToAxes(uint32_t* X, int b, int n)  // position, #bits, dimension
     t = X[n - 1] >> 1;
     print(N, 0);
     print(t, 0);
-    for (i = n - 1; i >= 0; i--) {
+    for (i = n - 1; i > 0; i--) {
         print(X[i], 1, "before");
         X[i] ^= X[i - 1];
         print(X[i], 1, "after");
@@ -193,7 +211,6 @@ void ToAxes(uint32_t* X, int b, int n)  // position, #bits, dimension
 void decode(uint32_t* X) {
     print(newline);
 
-    cout << "--------------[ Decode ]--------------" << endl;
     print(X[0], 0, "initial");
     print(X[1], 0, "initial");
 #if DIMS == 3
@@ -201,14 +218,6 @@ void decode(uint32_t* X) {
 #endif
 
     ToAxes(X, BITS, DIMS);
-
-    // Bits
-    // auto b =
-    //     bitset<32>(bitset<32 - BITS * DIMS>(-1).to_ullong()) & bitset<32>(-1);
-    // print(b.to_ullong());
-    // X[0] &= b.to_ullong();
-    // X[1] &= b.to_ullong();
-    // X[2] &= b.to_ullong();
 
     print(newline);
 
@@ -219,8 +228,22 @@ void decode(uint32_t* X) {
 #endif
 }
 
-void decode(uint64_t sum, uint32_t* X) {
-    //
+void decode(const uint64_t v, uint32_t* X) {
+    print(v, 0, "decode initial");
+    print(X[0], 0, "decode initial");
+    print(X[1], 0, "decode initial");
+#if DIMS == 3
+    print(X[2], 0, "decode initial");
+#endif
+    print(newline);
+    deinterleave(X, v, BITS, DIMS);
+    print(X[0], 0, "decode final");
+    print(X[1], 0, "decode final");
+#if DIMS == 3
+    print(X[2], 0, "decode final");
+#endif
+
+    decode(X);
 }
 
 // rotate/flip a quadrant appropriately
@@ -267,18 +290,26 @@ void d2xy(int n, int d, int* x, int* y) {
 int main() {
     uint32_t X[DIMS] = {5, 10, 20};
 
-    uint64_t sum = encode(X);
-    cout << "encoded: " << sum << endl;
-
-    // sum to X
-
-    // decod
-    decode(X);
-    cout << "decoded: ";
+    cout << "--------------[ Encode ]--------------" << endl;
+    cout << "encoded: from [";
     for (int i = 0; i < DIMS; ++i) {
         cout << X[i];
-        if (i < DIMS) cout << ", ";
+        if (i < DIMS - 1) cout << ", ";
     }
+
+    uint64_t sum = encode(X);
+    cout << "] to " << sum << endl;
+
+    cout << "--------------[ Decode ]--------------" << endl;
+    // decode(X);
+    uint32_t X2[DIMS] = {0};
+    decode(sum, X2);
+    cout << "decoded: from " << sum << " to [";
+    for (int i = 0; i < DIMS; ++i) {
+        cout << X2[i];
+        if (i < DIMS - 1) cout << ", ";
+    }
+    cout << "]" << endl;
 
     // int ret = xy2d(8, 3, 5);
     // print(ret, 0);
