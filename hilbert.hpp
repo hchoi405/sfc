@@ -7,21 +7,22 @@
 namespace hj {
 using namespace std;
 
-template <int DIMS, int BITS>
 class Hilbert {
    public:
+    Hilbert(int dims, int bits) : dims(dims), bits(bits) {}
+
     // Decode de-interleaved number
-    static void decode(uint32_t* X) { ToAxes(X); }
+    void decode(uint32_t* X) { ToAxes(X); }
 
     // De-interleave and decode it into axes
-    static void decode(const uint64_t v, uint32_t* X) {
+    void decode(const uint64_t v, uint32_t* X) {
         deinterleave(X, v);
 
         decode(X);
     }
 
     // Encode axes into hilbert code
-    static uint64_t encode(uint32_t* X) {
+    uint64_t encode(uint32_t* X) {
         FromAxes(X);
 
         // Interleaving the values of axes
@@ -31,10 +32,10 @@ class Hilbert {
     }
 
    private:
-    static uint64_t interleave(const uint32_t* X) {
-        uint64_t start = 1 << (DIMS * BITS - 1), sum = 0;
-        for (int i = BITS - 1; i >= 0; --i) {
-            for (int j = 0; j < DIMS; ++j) {
+    uint64_t interleave(const uint32_t* X) {
+        uint64_t start = 1 << (dims * bits - 1), sum = 0;
+        for (int i = bits - 1; i >= 0; --i) {
+            for (int j = 0; j < dims; ++j) {
                 // cout << (X[j] >> i & 1);
                 sum += (X[j] >> i & 1) * start;
                 start >>= 1;
@@ -43,11 +44,11 @@ class Hilbert {
         return sum;
     }
 
-    static void deinterleave(uint32_t* X, const uint64_t v) {
+    void deinterleave(uint32_t* X, const uint64_t v) {
         // De-interleaving the sum into axes values
         uint64_t src_pos = 1, dst_pos = 1;
-        for (int i = 0; i < BITS; ++i) {
-            for (int j = DIMS - 1; j >= 0; --j) {
+        for (int i = 0; i < bits; ++i) {
+            for (int j = dims - 1; j >= 0; --j) {
                 X[j] ^= (-(uint32_t)((v & dst_pos) != 0) ^ X[j]) & src_pos;
                 dst_pos <<= 1;
             }
@@ -55,13 +56,13 @@ class Hilbert {
         }
     }
 
-    static void FromAxes(uint32_t* X) {
-        uint32_t M = 1 << (BITS - 1), P, Q, t;
+    void FromAxes(uint32_t* X) {
+        uint32_t M = 1 << (bits - 1), P, Q, t;
         int i;
         // Inverse undo
         for (Q = M; Q > 1; Q >>= 1) {
             P = Q - 1;
-            for (i = 0; i < DIMS; i++) {
+            for (i = 0; i < dims; i++) {
                 if (X[i] & Q) {
                     X[0] ^= P;
                 }
@@ -75,29 +76,29 @@ class Hilbert {
         }  // exchange
         // Gray encode
 
-        for (i = 1; i < DIMS; i++) {
+        for (i = 1; i < dims; i++) {
             X[i] ^= X[i - 1];
         }
 
         t = 0;
         for (Q = M; Q > 1; Q >>= 1) {
-            if (X[DIMS - 1] & Q) {
+            if (X[dims - 1] & Q) {
                 t ^= Q - 1;
             }
         }
 
-        for (i = 0; i < DIMS; i++) {
+        for (i = 0; i < dims; i++) {
             X[i] ^= t;
         }
     }
 
-    static void ToAxes(uint32_t* X) {
-        uint32_t N = 2 << (BITS - 1), P, Q, t;
+    void ToAxes(uint32_t* X) {
+        uint32_t N = 2 << (bits - 1), P, Q, t;
         int i;
         // Gray decode by H ^ (H/2)
 
-        t = X[DIMS - 1] >> 1;
-        for (i = DIMS - 1; i > 0; i--) {
+        t = X[dims - 1] >> 1;
+        for (i = dims - 1; i > 0; i--) {
             X[i] ^= X[i - 1];
         }
         X[0] ^= t;
@@ -106,7 +107,7 @@ class Hilbert {
 
         for (Q = 2; Q != N; Q <<= 1) {
             P = Q - 1;
-            for (i = DIMS - 1; i >= 0; i--) {
+            for (i = dims - 1; i >= 0; i--) {
                 if (X[i] & Q) {
                     X[0] ^= P;
                 }
@@ -119,6 +120,9 @@ class Hilbert {
             }
         }  // exchange
     }
+
+   private:
+    int dims, bits;
 };
 
 };  // namespace hj
