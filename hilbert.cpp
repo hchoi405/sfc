@@ -10,8 +10,8 @@ using namespace std;
 using hclock = chrono::high_resolution_clock;
 using duration = chrono::duration<double>;
 
-const int DIMS = 3;
-const int BITS = 5;
+const int DIMS = 5;
+const int BITS = 7;
 
 void benchmark() {
     uint32_t X[DIMS];
@@ -41,7 +41,8 @@ void benchmark() {
 }
 
 int main() {
-    uint32_t X[DIMS] = {5, 10, 20};
+    // uint32_t X[DIMS] = {5, 10, 20}; // 1504
+    uint32_t X[DIMS] = {2, 0, 0, 1, 5};  // 3120
 
     Hilbert hilbert(DIMS, BITS);
 
@@ -51,7 +52,6 @@ int main() {
         cout << X[i];
         if (i < DIMS - 1) cout << ", ";
     }
-
     uint64_t sum = hilbert.encode(X);
     cout << "] to " << sum << endl;
 
@@ -65,8 +65,8 @@ int main() {
     }
     cout << "]" << endl;
 
-    cout << "--------------[ Benchmark ]--------------" << endl;
-    benchmark();
+    // cout << "--------------[ Benchmark ]--------------" << endl;
+    // benchmark();
 
     return 0;
 }

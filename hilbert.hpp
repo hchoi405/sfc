@@ -9,7 +9,13 @@ using namespace std;
 
 class Hilbert {
    public:
+    Hilbert() : dims(0), bits(0) {}
     Hilbert(int dims, int bits) : dims(dims), bits(bits) {}
+
+    void init(int dims, int bits) {
+        this->dims = dims;
+        this->bits = bits;
+    }
 
     // Decode de-interleaved number
     void decode(uint32_t* X) { ToAxes(X); }
@@ -33,7 +39,7 @@ class Hilbert {
 
    private:
     uint64_t interleave(const uint32_t* X) {
-        uint64_t start = 1 << (dims * bits - 1), sum = 0;
+        uint64_t start = 1ull << (dims * bits - 1), sum = 0;
         for (int i = bits - 1; i >= 0; --i) {
             for (int j = 0; j < dims; ++j) {
                 // cout << (X[j] >> i & 1);
@@ -57,7 +63,7 @@ class Hilbert {
     }
 
     void FromAxes(uint32_t* X) {
-        uint32_t M = 1 << (bits - 1), P, Q, t;
+        uint32_t M = 1u << (bits - 1), P, Q, t;
         int i;
         // Inverse undo
         for (Q = M; Q > 1; Q >>= 1) {
@@ -93,7 +99,7 @@ class Hilbert {
     }
 
     void ToAxes(uint32_t* X) {
-        uint32_t N = 2 << (bits - 1), P, Q, t;
+        uint32_t N = 2u << (bits - 1), P, Q, t;
         int i;
         // Gray decode by H ^ (H/2)
 
