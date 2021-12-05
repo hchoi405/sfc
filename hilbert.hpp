@@ -1,3 +1,6 @@
+#ifndef HJ_HILBERT
+#define HJ_HILBERT
+
 #include <bitset>
 #include <iomanip>
 #include <iostream>
@@ -18,17 +21,17 @@ class Hilbert {
     }
 
     // Decode de-interleaved number
-    void decode(uint32_t* X) { ToAxes(X); }
+    void decode(uint32_t* X) const { ToAxes(X); }
 
     // De-interleave and decode it into axes
-    void decode(const uint64_t v, uint32_t* X) {
+    void decode(const uint64_t v, uint32_t* X) const {
         deinterleave(X, v);
 
         decode(X);
     }
 
     // Encode axes into hilbert code
-    uint64_t encode(uint32_t* X) {
+    uint64_t encode(uint32_t* X) const {
         FromAxes(X);
 
         // Interleaving the values of axes
@@ -38,7 +41,7 @@ class Hilbert {
     }
 
    private:
-    uint64_t interleave(const uint32_t* X) {
+    uint64_t interleave(const uint32_t* X) const {
         uint64_t start = 1ull << (dims * bits - 1), sum = 0;
         for (int i = bits - 1; i >= 0; --i) {
             for (int j = 0; j < dims; ++j) {
@@ -50,7 +53,7 @@ class Hilbert {
         return sum;
     }
 
-    void deinterleave(uint32_t* X, const uint64_t v) {
+    void deinterleave(uint32_t* X, const uint64_t v) const {
         // De-interleaving the sum into axes values
         uint64_t src_pos = 1, dst_pos = 1;
         for (int i = 0; i < bits; ++i) {
@@ -62,7 +65,7 @@ class Hilbert {
         }
     }
 
-    void FromAxes(uint32_t* X) {
+    void FromAxes(uint32_t* X) const {
         uint32_t M = 1u << (bits - 1), P, Q, t;
         int i;
         // Inverse undo
@@ -98,7 +101,7 @@ class Hilbert {
         }
     }
 
-    void ToAxes(uint32_t* X) {
+    void ToAxes(uint32_t* X) const {
         uint32_t N = 2u << (bits - 1), P, Q, t;
         int i;
         // Gray decode by H ^ (H/2)
@@ -132,3 +135,5 @@ class Hilbert {
 };
 
 };  // namespace hj
+
+#endif
