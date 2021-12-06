@@ -14,7 +14,7 @@ void printArray(const std::string &name, const Arg &arg, const int n) {
     std::cout << name << "(" << n << "):[";
     for (int i = 0; i < n; ++i) {
         std::cout << arg[i];
-        if (i < n-1) cout << ",";
+        if (i < n-1) std::cout << ",";
     }
     std::cout << "]";
 }

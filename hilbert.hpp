@@ -20,14 +20,11 @@ class Hilbert {
         this->bits = bits;
     }
 
-    // Decode de-interleaved number
-    void decode(uint32_t* X) const { ToAxes(X); }
-
     // De-interleave and decode it into axes
     void decode(const uint64_t v, uint32_t* X) const {
         deinterleave(X, v);
 
-        decode(X);
+        ToAxes(X);
     }
 
     // Encode axes into hilbert code
