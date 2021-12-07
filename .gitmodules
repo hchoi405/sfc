@@ -1,0 +1,3 @@
+[submodule "ext/zorder_knn"]
+	path = ext/zorder_knn
+	url = git@github.com:hchoi405/zorder_knn
