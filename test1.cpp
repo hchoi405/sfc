@@ -14,8 +14,8 @@ using namespace std;
 using hclock = chrono::high_resolution_clock;
 using duration = chrono::duration<double>;
 
-const int DIMS = 5;
-const int BITS = 8;
+const int DIMS = 2;
+const int BITS = 3;
 
 void benchmark() {
     uint32_t X[DIMS];
@@ -82,6 +82,7 @@ int main() {
     // }
     // uint64_t sum = hilbert.encode(X.data());
     // cout << "] to " << sum << endl;
+    printEncoded(hilbert, {7, 5});
 
     cout << "--------------[ Decode ]--------------" << endl;
     // uint32_t X2[DIMS] = {0};
@@ -92,11 +93,11 @@ int main() {
     //     if (i < DIMS - 1) cout << ", ";
     // }
     // cout << "]" << endl;
-    // for (int i = 0; i < 16; ++i) printDecoded(hilbert, i);
-    printDecoded(hilbert, 68719476736ull);
-    printDecoded(hilbert, 137438953472ull);
-    printDecoded(hilbert, 206158430208ull);
-    printDecoded(hilbert, 1099511627776ull-1);
+    for (int i = 0; i < 16; ++i) printDecoded(hilbert, i);
+    // printDecoded(hilbert, 68719476736ull);
+    // printDecoded(hilbert, 137438953472ull);
+    // printDecoded(hilbert, 206158430208ull);
+    // printDecoded(hilbert, 1099511627776ull-1);
     // printDecoded(hilbert, 9674);
     // printDecoded(hilbert, 16107);
     // printDecoded(hilbert, 18131);
