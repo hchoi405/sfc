@@ -9,7 +9,7 @@
 #include <sstream>
 #include <vector>
 
-#include "sfc/Zcurve.h"
+#include "sfc/zcurve.hpp"
 #include "sfc/hilbert.hpp"
 #include "sfc/utils.hpp"
 #include "zorder_knn/less.hpp"

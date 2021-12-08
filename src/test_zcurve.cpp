@@ -4,7 +4,7 @@
 
 #include "sfc/Header.h"
 #include "sfc/Vector.h"
-#include "sfc/Zcurve.h"
+#include "sfc/zcurve.hpp"
 
 using namespace std;
 
