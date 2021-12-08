@@ -61,9 +61,9 @@ void svg_save(std::string filename, std::vector<Pt2> const& pts) {
     auto maxVal = *std::max_element(it->begin(), it->end());
     auto radius = maxVal * 0.01f;
     auto width = maxVal * 0.02f;
-    std::cout << "maxVal: " << maxVal << std::endl;
-    std::cout << "circle radius: " << radius << std::endl;
-    std::cout << "path width: " << width << std::endl;
+    // std::cout << "maxVal: " << maxVal << std::endl;
+    // std::cout << "circle radius: " << radius << std::endl;
+    // std::cout << "path width: " << width << std::endl;
 
     const std::string header = string_format(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
@@ -110,7 +110,6 @@ void svg_save(std::string filename, std::vector<Pt2> const& pts) {
 
 void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out, const int nBits) {
     const uint32_t maxVal = pow(2, nBits);
-    hj::print(maxVal);
 
     // Discretize points from [MIN_VAL, MAX_VAL] to [0, maxVal-1]
     const float extent = MAX_VAL - MIN_VAL;
@@ -127,7 +126,7 @@ void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out, const
 
 void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims,
                       const int nBits) {
-    hj::Hilbert<2, float, uint64_t> hilbert(nDims, nBits);
+    hj::Hilbert<2, float, uint64_t> hilbert;
 
     std::vector<Pt2ui> pts_ui;
     normalizePoints(pts, pts_ui, nBits);
@@ -136,7 +135,7 @@ void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes,
     codes.clear();
     codes.reserve(codes.size());
     for (auto& p : pts_ui) {
-        uint64_t code = hilbert.encode(p.data());
+        uint64_t code = hilbert.encode(p);
         codes.push_back(code);
     }
 }
@@ -152,7 +151,7 @@ void convertToMorton(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, 
     codes.clear();
     codes.reserve(codes.size());
     for (auto& p : pts_ui) {
-        uint64_t code = zcurve2.encode(p.data());
+        uint64_t code = zcurve2.encode(p);
         codes.push_back(code);
     }
 }
@@ -210,12 +209,12 @@ int main(int argc, char* argv[]) {
     // Z-Curve
     /////////////////////////////////////////////////////////////
     start = hclock::now();
-    hj::Zcurve<2, float, uint64_t> zcurve2;
-    zcurve2.order(hj::Vector2f(MIN_VAL), hj::Vector2f(MAX_VAL), pts);
+    convertToMorton(pts, codes, nDims, nBits);
+    sortByCodes(pts, codes, sorted_pts);
     dur = hclock::now() - start;
 
     std::cout << "Took " << dur.count() << "s for zCurve" << std::endl;
-    svg_save("example_morton.svg", pts);
+    svg_save("example_morton.svg", sorted_pts);
 
     return EXIT_SUCCESS;
 }

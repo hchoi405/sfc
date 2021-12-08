@@ -117,10 +117,33 @@ class Vector {
         }
         return *this;
     }
-
     bool operator<(const Vector<T, nDimensions>& rhs) const {
         for (int i = 0; i < nDimensions; ++i) {
             if (v[i] >= rhs[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    bool operator<=(const Vector<T, nDimensions>& rhs) const {
+        for (int i = 0; i < nDimensions; ++i) {
+            if (v[i] > rhs[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    bool operator>(const Vector<T, nDimensions>& rhs) const {
+        for (int i = 0; i < nDimensions; ++i) {
+            if (v[i] <= rhs[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    bool operator>=(const Vector<T, nDimensions>& rhs) const {
+        for (int i = 0; i < nDimensions; ++i) {
+            if (v[i] < rhs[i]) {
                 return false;
             }
         }

@@ -2,66 +2,81 @@
 
 #include "Header.h"
 #include "Vector.h"
+#include "sfc.h"
 
 namespace hj {
-template <int Dimension, typename DataType, typename UnsignedIntegerType = uint64_t>
-class Zcurve {
-    static_assert(Dimension > 0, "Parameter 'Dimension' must be > 0.");
-    static_assert(std::is_constructible<UnsignedIntegerType, DataType>::value,
-                  "UnsignedIntegerType instance cannot be constructed using DataType.");
+template <int Dims, typename DataType, typename UInt = uint64_t>
+class Zcurve : public SFC<Dims, DataType, UInt> {
+    using Base = SFC<Dims, DataType, UInt>;
 
-    using _Vector = Vector<DataType, Dimension>;
+    // Using base's types
+    using typename Base::_Point;
+
+    // Using base's member variables
+    using Base::numBitsPerAxis;
+    using Base::numBitsTotal;
+    using Base::numStrataPerAxis;
+
+    // Own member variables
     using bigfloat =
-        typename std::conditional<std::is_same<UnsignedIntegerType, uint128_t>::value,
+        typename std::conditional<std::is_same<UInt, uint128_t>::value,
                                   boost::multiprecision::cpp_dec_float_50, float>::type;
-
-    // clang-format off
-	const int numBits =
-		(std::is_same<UnsignedIntegerType, uint8_t>::value) ? 8 :
-		(std::is_same<UnsignedIntegerType, uint16_t>::value) ? 16 :
-		(std::is_same<UnsignedIntegerType, uint32_t>::value) ? 32 :
-		(std::is_same<UnsignedIntegerType, uint64_t>::value) ? 64 :
-		(std::is_same<UnsignedIntegerType, uint128_t>::value) ? 128 : 0;
-    // clang-format on
-
-    const int halfNumBits = numBits / 2;
     const float eps = 1e-6f;
-    const UnsignedIntegerType maxCells = UnsignedIntegerType(1) << (numBits / Dimension);
-    const int fieldBits =
-        numBits / Dimension;  // use possible maximum number of bits for each field
-    const int numMagicBits = (int)log2(fieldBits) + 1;
-    const UnsignedIntegerType One = 1;
-    const UnsignedIntegerType oneShiftedByFieldBits = One << fieldBits;
-    const size_t oneShiftedByLogFieldBits = size_t((Dimension - 1) * (One << int(log2(fieldBits))));
+    const int numMagicBits = (int)log2(numBitsPerAxis) + 1;
+    const UInt One = 1;
+    const UInt oneShiftedByFieldBits = One << numBitsPerAxis;
+    const size_t oneShiftedByLogFieldBits = size_t((Dims - 1) * (One << int(log2(numBitsPerAxis))));
 
-    std::vector<UnsignedIntegerType> magicBits;
+    std::vector<UInt> magicBits;
 
    public:
     Zcurve() {
         std::cout << "\t[Initialization of Z-Curve]\n"
-                  << "Use " << numBits << " bits for " << Dimension << " dimension of data\n"
-                  << "Each field uses: " << fieldBits << " bits" << std::endl;
+                  << "\t\tUse " << numBitsTotal << " bits for " << Dims << " dimension of data\n"
+                  << "\t\tEach field uses: " << numBitsPerAxis << " bits" << std::endl;
         magicBits.resize(numMagicBits);
-        getMagicBits(&(magicBits[0]), numBits, fieldBits, Dimension);
+        getMagicBits(&(magicBits[0]), numBitsTotal, numBitsPerAxis, Dims);
     }
 
+   public:
+    UInt encode(const std::array<uint32_t, Dims>& x) const {
+        UInt result = 0;
+        for (int i = 0; i < Dims; i++) {
+            assert(x[i] >= 0 && x[i] < numStrataPerAxis);
+            result |= (getMortonKey(x[i]) << i);
+        }
+        return result;
+    }
+    UInt encode(const std::array<DataType, Dims>& x, const std::array<DataType, Dims> pMin,
+                const std::array<DataType, Dims> pMax) const {
+        std::array<uint32_t, Dims> uarr;
+        for (int i = 0; i < Dims; ++i) uarr[i] = Base::normalize(x[i], pMin[i], pMax[i]);
+
+        return encode(uarr);
+    }
+    void decode(const UInt v, std::array<uint32_t, Dims>& x) const { hj::NotImplemented(); }
+    void decode(const UInt v, std::array<DataType, Dims>& x, const std::array<DataType, Dims> pMin,
+                const std::array<DataType, Dims> pMax) const {
+        hj::NotImplemented();
+    }
+
+   public:
     // For arbtrary type of element with accessor
     template <typename ArrayElementType>
-    void order(const _Vector& pmin, const _Vector& pmax, std::vector<ArrayElementType>& arr,
-               const std::function<_Vector&(ArrayElementType&)>& accessor = 0,
+    void order(const _Point& pmin, const _Point& pmax, std::vector<ArrayElementType>& arr,
+               const std::function<_Point&(ArrayElementType&)>& accessor = 0,
                const std::function<void(void)>& progressUpdate = 0) const {
-        std::vector<std::pair<_Vector, UnsignedIntegerType>> ordered(arr.size());
+        std::vector<std::pair<_Point, UInt>> ordered(arr.size());
 
         for (size_t i = 0; i < arr.size(); ++i) {
-            _Vector& v = accessor(arr[i]);
+            _Point& v = accessor(arr[i]);
             auto p = normalize(v, pmin - eps, pmax + eps);
-            UnsignedIntegerType key = getMortonKey(p);
+            UInt key = getMortonKey(p);
             ordered[i] = std::make_pair(v, key);
         }
 
         std::sort(ordered.begin(), ordered.end(),
-                  [&progressUpdate](std::pair<_Vector, UnsignedIntegerType>& lhs,
-                                    std::pair<_Vector, UnsignedIntegerType>& rhs) {
+                  [&progressUpdate](std::pair<_Point, UInt>& lhs, std::pair<_Point, UInt>& rhs) {
                       if (progressUpdate) progressUpdate();
                       return lhs.second < rhs.second;
                   });
@@ -72,21 +87,20 @@ class Zcurve {
     }
 
     // Overloading for hj::Vector
-    void order(const _Vector& pmin, const _Vector& pmax, std::vector<_Vector>& arr,
-               const std::function<_Vector&(_Vector&)>& accessor = 0,
+    void order(const _Point& pmin, const _Point& pmax, std::vector<_Point>& arr,
+               const std::function<_Point&(_Point&)>& accessor = 0,
                const std::function<void(void)>& progressUpdate = 0) const {
-        std::vector<std::pair<_Vector, UnsignedIntegerType>> ordered(arr.size());
+        std::vector<std::pair<_Point, UInt>> ordered(arr.size());
 
         for (size_t i = 0; i < arr.size(); ++i) {
-            _Vector& v = arr[i];
+            _Point& v = arr[i];
             auto p = normalize(v, pmin - eps, pmax + eps);
-            UnsignedIntegerType key = getMortonKey(p);
+            UInt key = getMortonKey(p);
             ordered[i] = std::make_pair(v, key);
         }
 
         std::sort(ordered.begin(), ordered.end(),
-                  [&progressUpdate](std::pair<_Vector, UnsignedIntegerType>& lhs,
-                                    std::pair<_Vector, UnsignedIntegerType>& rhs) {
+                  [&progressUpdate](std::pair<_Point, UInt>& lhs, std::pair<_Point, UInt>& rhs) {
                       if (progressUpdate) progressUpdate();
                       return lhs.second < rhs.second;
                   });
@@ -97,46 +111,44 @@ class Zcurve {
     }
 
     // Overloading for std::array
-    void order(const _Vector& pmin, const _Vector& pmax,
-               std::vector<std::array<DataType, Dimension>>& arr) const {
-        std::vector<std::pair<_Vector, UnsignedIntegerType>> ordered(arr.size());
+    void order(const _Point& pmin, const _Point& pmax,
+               std::vector<std::array<DataType, Dims>>& arr) const {
+        std::vector<std::pair<_Point, UInt>> ordered(arr.size());
 
         for (size_t i = 0; i < arr.size(); ++i) {
-            _Vector v(arr[i]);
-            auto p = normalize(v, pmin - eps, pmax + eps);
-            UnsignedIntegerType key = getMortonKey(p);
+            _Point v(arr[i]);
+            auto p = Base::normalize(v, pmin - eps, pmax + eps);
+            UInt key = getMortonKey(p);
             ordered[i] = std::make_pair(v, key);
         }
 
-        std::sort(
-            ordered.begin(), ordered.end(),
-            [](std::pair<_Vector, UnsignedIntegerType>& lhs,
-               std::pair<_Vector, UnsignedIntegerType>& rhs) { return lhs.second < rhs.second; });
+        std::sort(ordered.begin(), ordered.end(),
+                  [](std::pair<_Point, UInt>& lhs, std::pair<_Point, UInt>& rhs) {
+                      return lhs.second < rhs.second;
+                  });
 
         for (auto i = 0u; i < arr.size(); ++i) {
             arr[i] = ordered[i].first;
         }
     }
 
-    inline UnsignedIntegerType getMortonKey(const _Vector& p, const _Vector& pMin,
-                                            const _Vector& pMax) const {
+    inline UInt getMortonKey(const _Point& p, const _Point& pMin, const _Point& pMax) const {
         return getMortonKey(normalize(p, pMin - eps, pMax + eps));
     }
 
     // input: _p normalized point in [0, 1]
-    inline UnsignedIntegerType getMortonKey(const _Vector& _p) const {
-        UnsignedIntegerType result = 0;
+    inline UInt getMortonKey(const _Point& _p) const {
+        UInt result = 0;
 
-        for (int i = 0; i < Dimension; i++) {
-            result |=
-                (getMortonKey(UnsignedIntegerType(bigfloat(_p[i]) * bigfloat(maxCells))) << i);
+        for (int i = 0; i < Dims; i++) {
+            result |= (getMortonKey(UInt(bigfloat(_p[i]) * bigfloat(numStrataPerAxis))) << i);
         }
 
         return result;
     }
 
-    inline UnsignedIntegerType getMortonKey(const UnsignedIntegerType& _v) const {
-        static auto bit_and = std::bit_and<UnsignedIntegerType>();
+    inline UInt getMortonKey(const UInt& _v) const {
+        static auto bit_and = std::bit_and<UInt>();
 
         auto x = bit_and(_v, oneShiftedByFieldBits - 1);  // take field bits
         size_t remainingBits = oneShiftedByLogFieldBits;
@@ -149,26 +161,26 @@ class Zcurve {
         return x;
     }
 
-    void getMagicBits(UnsignedIntegerType* mBits, int totalBits, int fieldBits, int dimension) {
-        assert(totalBits / dimension == fieldBits);
-        assert(totalBits <= numBits);
-        assert(fieldBits <
+    void getMagicBits(UInt* mBits, int totalBits, int bitsPerAxis, int dimension) {
+        assert(totalBits / dimension == bitsPerAxis);
+        assert(totalBits <= numBitsTotal);
+        assert(bitsPerAxis <
                sizeof(size_t) * 8);  // sizeof(size_t)*8 = 64 is the maximum size of integer
                                      // that can be used as an operand for shift operator
 
-        const UnsignedIntegerType one = 1;
+        const UInt one = 1;
 
         // 8 bits
-        size_t leftMostBit = size_t(one << size_t(log2(fieldBits)));
+        size_t leftMostBit = size_t(one << size_t(log2(bitsPerAxis)));
         // 8 bits with all 1
-        UnsignedIntegerType a = (one << leftMostBit) - 1;
+        UInt a = (one << leftMostBit) - 1;
 
-        UnsignedIntegerType b = a | (a << (leftMostBit * dimension));
+        UInt b = a | (a << (leftMostBit * dimension));
         int idx = 0;
         mBits[idx++] = b;
         // std::cout << b << std::endl;
         while (leftMostBit > 1) {
-            UnsignedIntegerType c = b & (b << (leftMostBit / 2));
+            UInt c = b & (b << (leftMostBit / 2));
             b = b ^ c ^ (c << (leftMostBit / 2) * (dimension - 1));
             mBits[idx++] = b;
             // std::cout << b << std::endl;
@@ -177,35 +189,25 @@ class Zcurve {
     }
 
     // For-loop basaed calculation with bugs (results are different from magic bits)
-    UnsignedIntegerType getMortonKey_for(const _Vector& p, const _Vector& pMin,
-                                         const _Vector& pMax) const {
+    UInt getMortonKey_for(const _Point& p, const _Point& pMin, const _Point& pMax) const {
         return getMortonKey_for(normalize(p, pMin - eps, pMax + eps));
     }
 
-    UnsignedIntegerType getMortonKey_for(const _Vector& _p) const {
-        UnsignedIntegerType result = 0;
+    UInt getMortonKey_for(const _Point& _p) const {
+        UInt result = 0;
 
-        Vector<UnsignedIntegerType, Dimension> floored;
-        for (int i = 0; i < Dimension; ++i) {
-            floored[i] = UnsignedIntegerType(bigfloat(_p[i]) * bigfloat(maxCells));
+        Vector<UInt, Dims> floored;
+        for (int i = 0; i < Dims; ++i) {
+            floored[i] = UInt(bigfloat(_p[i]) * bigfloat(numStrataPerAxis));
         }
 
-        for (int i = 0; i < numBits; i++) {
-            for (int j = 0; j < Dimension; ++j) {
+        for (int i = 0; i < numBitsTotal; i++) {
+            for (int j = 0; j < Dims; ++j) {
                 result = result | ((floored[j] & (1ULL << i)) << (i + j));
             }
         }
 
         return result;
-    }
-
-    inline static _Vector normalize(const _Vector& point, const _Vector& pmin,
-                                    const _Vector& pmax) {
-        auto origin = (point - pmin);
-        auto size = (pmax - pmin);
-
-        // [0,0] ~ [1,1]
-        return (origin / size);
     }
 };
 
