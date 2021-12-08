@@ -4,7 +4,7 @@
 #include "Vector.h"
 #include "sfc.h"
 
-namespace hj {
+namespace sfc {
 template <int Dims, typename DataType, typename UInt = uint64_t>
 class Zcurve : public SFC<Dims, DataType, UInt> {
     using Base = SFC<Dims, DataType, UInt>;
@@ -54,10 +54,10 @@ class Zcurve : public SFC<Dims, DataType, UInt> {
 
         return encode(uarr);
     }
-    void decode(const UInt v, std::array<uint32_t, Dims>& x) const { hj::NotImplemented(); }
+    void decode(const UInt v, std::array<uint32_t, Dims>& x) const { sfc::NotImplemented(); }
     void decode(const UInt v, std::array<DataType, Dims>& x, const std::array<DataType, Dims> pMin,
                 const std::array<DataType, Dims> pMax) const {
-        hj::NotImplemented();
+        sfc::NotImplemented();
     }
 
    public:
@@ -86,7 +86,7 @@ class Zcurve : public SFC<Dims, DataType, UInt> {
         }
     }
 
-    // Overloading for hj::Vector
+    // Overloading for sfc::Vector
     void order(const _Point& pmin, const _Point& pmax, std::vector<_Point>& arr,
                const std::function<_Point&(_Point&)>& accessor = 0,
                const std::function<void(void)>& progressUpdate = 0) const {
@@ -211,4 +211,4 @@ class Zcurve : public SFC<Dims, DataType, UInt> {
     }
 };
 
-}  // namespace hj
+}  // namespace sfc

@@ -126,7 +126,7 @@ void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out, const
 
 void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims,
                       const int nBits) {
-    hj::Hilbert<2, float, uint64_t> hilbert;
+    sfc::Hilbert<2, float, uint64_t> hilbert;
 
     std::vector<Pt2ui> pts_ui;
     normalizePoints(pts, pts_ui, nBits);
@@ -142,7 +142,7 @@ void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes,
 
 void convertToMorton(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims,
                      const int nBits) {
-    hj::Zcurve<2, float, uint64_t> zcurve2;
+    sfc::Zcurve<2, float, uint64_t> zcurve2;
 
     std::vector<Pt2ui> pts_ui;
     normalizePoints(pts, pts_ui, nBits);

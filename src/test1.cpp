@@ -8,7 +8,7 @@
 
 #include "utils.hpp"
 
-using namespace hj;
+using namespace sfc;
 using namespace std;
 
 using hclock = chrono::high_resolution_clock;

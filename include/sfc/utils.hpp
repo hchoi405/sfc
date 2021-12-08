@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-namespace hj {
+namespace sfc {
 template <typename Arg>
 void print(const std::string &name, const Arg &arg) {
     std::cout << name << ": " << arg << std::endl;
@@ -21,6 +21,6 @@ void printArray(const std::string &name, const Arg &arg, const int n) {
 
 #define print(v) print(#v, v)
 #define printArray(v, ...) printArray(#v, v, __VA_ARGS__)
-}  // namespace hj
+}  // namespace sfc
 
 #endif

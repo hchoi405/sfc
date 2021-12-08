@@ -29,8 +29,8 @@ bool dimensionTimeComparison(bool print) {
     int numData = 10000;
 
     {
-        hj::Zcurve<3, float, uint64_t> zcurve3;
-        using vec3 = hj::Vector<float, 3>;
+        sfc::Zcurve<3, float, uint64_t> zcurve3;
+        using vec3 = sfc::Vector<float, 3>;
         vec3 pmin(0.f), pmax(1.f);
         std::vector<vec3> arr1;
         for (int i = 0; i < numData; ++i) arr1.push_back(create_random_data<3>());
@@ -42,8 +42,8 @@ bool dimensionTimeComparison(bool print) {
     }
 
     {
-        hj::Zcurve<5, float, uint64_t> zcurve5;
-        using vec5 = hj::Vector<float, 5>;
+        sfc::Zcurve<5, float, uint64_t> zcurve5;
+        using vec5 = sfc::Vector<float, 5>;
         vec5 pmin(0.f), pmax(1.f);
         std::vector<vec5> arr5;
         for (int i = 0; i < numData; ++i) arr5.push_back(create_random_data<5>());
@@ -55,8 +55,8 @@ bool dimensionTimeComparison(bool print) {
     }
 
     {
-        hj::Zcurve<3, float, uint128_t> zcurve3;
-        using vec3 = hj::Vector<float, 3>;
+        sfc::Zcurve<3, float, uint128_t> zcurve3;
+        using vec3 = sfc::Vector<float, 3>;
         std::vector<vec3> arr2;
         for (int i = 0; i < numData; ++i) arr2.push_back(create_random_data<3>());
 
@@ -67,8 +67,8 @@ bool dimensionTimeComparison(bool print) {
     }
 
     {
-        hj::Zcurve<5, float, uint128_t> zcurve5;
-        using vec5 = hj::Vector<float, 5>;
+        sfc::Zcurve<5, float, uint128_t> zcurve5;
+        using vec5 = sfc::Vector<float, 5>;
         std::vector<vec5> arr2;
         for (int i = 0; i < numData; ++i) arr2.push_back(create_random_data<5>());
 
@@ -79,8 +79,8 @@ bool dimensionTimeComparison(bool print) {
     }
 
     {
-        hj::Zcurve<18, float, uint128_t> zcurve18;
-        using vec18 = hj::Vector<float, 18>;
+        sfc::Zcurve<18, float, uint128_t> zcurve18;
+        using vec18 = sfc::Vector<float, 18>;
         std::vector<vec18> arr2;
         for (int i = 0; i < numData; ++i) arr2.push_back(create_random_data<18>());
 
@@ -96,7 +96,7 @@ bool dimensionTimeComparison(bool print) {
 bool higherPrecisionTest(bool print) {
     const int DIM = 3;
     const int NUM_RANDOM_DATA = 10;
-    using item = hj::Vector<float, DIM>;
+    using item = sfc::Vector<float, DIM>;
 
     // Generate Data
     vector<item> arr;
@@ -123,7 +123,7 @@ bool higherPrecisionTest(bool print) {
     arr.push_back({ 0.f, 0.f, .5f });*/
 
     uint64_t maxCells = uint64_t(1) << (64 / 3);
-    hj::Vector<uint64_t, 3> floored;
+    sfc::Vector<uint64_t, 3> floored;
     for (int i = 0; i < 3; ++i) {
         floored[i] = uint64_t(boost::multiprecision::cpp_dec_float_50(arr[0][i]) *
                               boost::multiprecision::cpp_dec_float_50(maxCells));
@@ -135,7 +135,7 @@ bool higherPrecisionTest(bool print) {
     ///////////////////////////////////////////////////////////////
     /* Using for loop ********************************************/
     ///////////////////////////////////////////////////////////////
-    hj::Zcurve<DIM, float, uint64_t> zcurve;
+    sfc::Zcurve<DIM, float, uint64_t> zcurve;
     vector<pair<int, item>> arr1;
 
     int idx = 0;
@@ -200,7 +200,7 @@ bool magicBitsTest(bool print) {
     /* TEST1. Magic bits *****************************************/
     /////////////////////////////////////////////////////////////
     const int DIM = 3;
-    hj::Zcurve<DIM, float, uint64_t> zcurve0;
+    sfc::Zcurve<DIM, float, uint64_t> zcurve0;
     const int totalBits = 32;
     const int fieldBits = 10;
     const int dimension = 3;

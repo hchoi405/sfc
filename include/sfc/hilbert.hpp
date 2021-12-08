@@ -9,7 +9,7 @@
 
 #include "sfc.h"
 
-namespace hj {
+namespace sfc {
 using namespace std;
 
 template <int Dims, typename DataType, typename UInt = uint64_t>
@@ -50,7 +50,7 @@ class Hilbert : public SFC<Dims, DataType, UInt> {
     }
     void decode(const UInt v, std::array<DataType, Dims>& x, const std::array<DataType, Dims> pMin,
                 const std::array<DataType, Dims> pMax) const {
-        hj::NotImplemented();
+        sfc::NotImplemented();
     }
 
    private:
@@ -144,6 +144,6 @@ class Hilbert : public SFC<Dims, DataType, UInt> {
     }
 };
 
-};  // namespace hj
+};  // namespace sfc
 
 #endif

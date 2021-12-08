@@ -2,7 +2,7 @@
 
 #include "Header.h"
 
-namespace hj {
+namespace sfc {
 template <typename T, int nDimensions>
 class Vector {
    public:
@@ -184,7 +184,7 @@ typedef Vector<float, 5> Vector5f;
 typedef Vector<uint64_t, 5> Vector5ui;
 
 template <typename T, int nDimensions>
-std::ostream& operator<<(std::ostream& os, const hj::Vector<T, nDimensions>& v) {
+std::ostream& operator<<(std::ostream& os, const sfc::Vector<T, nDimensions>& v) {
     os << "[" << v[0];
     for (int i = 1; i < nDimensions; ++i) {
         os << ", " << v[i];
@@ -192,4 +192,4 @@ std::ostream& operator<<(std::ostream& os, const hj::Vector<T, nDimensions>& v) 
     os << "]" << std::endl;
     return os;
 }
-}  // namespace hj
+}  // namespace sfc
