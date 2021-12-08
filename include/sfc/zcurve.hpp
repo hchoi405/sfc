@@ -1,8 +1,11 @@
 #pragma once
 
-#include "Header.h"
+#include <boost/multiprecision/cpp_dec_float.hpp>
+
 #include "Vector.h"
 #include "sfc.h"
+
+using namespace boost::multiprecision;
 
 namespace sfc {
 template <int Dims, typename DataType, typename UInt = uint64_t>
@@ -47,16 +50,16 @@ class Zcurve : public SFC<Dims, DataType, UInt> {
         }
         return result;
     }
-    UInt encode(const std::array<DataType, Dims>& x, const std::array<DataType, Dims> pMin,
-                const std::array<DataType, Dims> pMax) const {
+    UInt encode(const std::array<DataType, Dims>& x, const std::array<DataType, Dims>& pMin,
+                const std::array<DataType, Dims>& pMax) const {
         std::array<uint32_t, Dims> uarr;
         for (int i = 0; i < Dims; ++i) uarr[i] = Base::normalize(x[i], pMin[i], pMax[i]);
 
         return encode(uarr);
     }
     void decode(const UInt v, std::array<uint32_t, Dims>& x) const { sfc::NotImplemented(); }
-    void decode(const UInt v, std::array<DataType, Dims>& x, const std::array<DataType, Dims> pMin,
-                const std::array<DataType, Dims> pMax) const {
+    void decode(const UInt v, std::array<DataType, Dims>& x, const std::array<DataType, Dims>& pMin,
+                const std::array<DataType, Dims>& pMax) const {
         sfc::NotImplemented();
     }
 

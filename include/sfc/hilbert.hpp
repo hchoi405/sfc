@@ -36,8 +36,8 @@ class Hilbert : public SFC<Dims, DataType, UInt> {
 
         return sum;
     }
-    UInt encode(const std::array<DataType, Dims>& x, const std::array<DataType, Dims> pMin,
-                const std::array<DataType, Dims> pMax) const {
+    UInt encode(const std::array<DataType, Dims>& x, const std::array<DataType, Dims>& pMin,
+                const std::array<DataType, Dims>& pMax) const {
         std::array<uint32_t, Dims> uarr;
         for (int i = 0; i < Dims; ++i) uarr[i] = Base::normalize(x[i], pMin[i], pMax[i]);
 
@@ -48,8 +48,8 @@ class Hilbert : public SFC<Dims, DataType, UInt> {
 
         ToAxes(const_cast<uint32_t*>(x.data()));
     }
-    void decode(const UInt v, std::array<DataType, Dims>& x, const std::array<DataType, Dims> pMin,
-                const std::array<DataType, Dims> pMax) const {
+    void decode(const UInt v, std::array<DataType, Dims>& x, const std::array<DataType, Dims>& pMin,
+                const std::array<DataType, Dims>& pMax) const {
         sfc::NotImplemented();
     }
 

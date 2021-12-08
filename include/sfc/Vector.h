@@ -1,6 +1,10 @@
 #pragma once
 
-#include "Header.h"
+#include <boost/multiprecision/cpp_int.hpp>
+#include <cassert>
+#include <cstdint>
+
+using namespace boost::multiprecision;
 
 namespace sfc {
 template <typename T, int nDimensions>

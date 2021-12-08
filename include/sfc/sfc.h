@@ -9,6 +9,13 @@
 
 namespace sfc {
 
+class NotImplemented {
+   public:
+    NotImplemented(const std::string& funcname = __builtin_FUNCTION()) {
+        throw std::runtime_error("Not implemented: " + funcname);
+    }
+};
+
 /**
  * @brief An abstract Space-Filling Curve class that has common variables for
  * all SFC methods like number of bits per dimension.
@@ -50,8 +57,36 @@ class SFC {
 
    public:
     ///////////////////////////////////////////////////////////////
-    // Interfaces
+    // Functions (Interfaces)
     ///////////////////////////////////////////////////////////////
+    /**
+     * @brief Encode given ArrayLike type of point as a 1-D Space-Filling key
+     *
+     * @param x ArrayLike type which has an operator[] and in range [0, numStrataPerAxis)
+     * @return UInt
+     */
+    template <typename ArrayLike>
+    UInt encode(const ArrayLike& x) const {
+        std::array<uint32_t, Dims> uarr;
+        for (int i = 0; i < Dims; ++i) uarr[i] = x[i];
+
+        return encode(uarr);
+    }
+
+    /**
+     * @brief Encode given ArrayLike type of point as a 1-D Space-Filling key
+     *
+     * @param x ArrayLike type which has an operator[] and in range [pMin, pMax]
+     * @return UInt
+     */
+    template <typename ArrayLike>
+    UInt encode(const ArrayLike& x, const ArrayLike& pMin, const ArrayLike& pMax) const {
+        std::array<uint32_t, Dims> uarr;
+        for (int i = 0; i < Dims; ++i) uarr[i] = normalize(x[i], pMin[i], pMax[i]);
+
+        return encode(uarr);
+    }
+
     /**
      * @brief Encode given uint array as a 1-D Space-Filling key
      *
@@ -68,8 +103,8 @@ class SFC {
      * @param pMax
      * @return UInt
      */
-    virtual UInt encode(const std::array<DataType, Dims>& x, const std::array<DataType, Dims> pMin,
-                        const std::array<DataType, Dims> pMax) const = 0;
+    virtual UInt encode(const std::array<DataType, Dims>& x, const std::array<DataType, Dims>& pMin,
+                        const std::array<DataType, Dims>& pMax) const = 0;
 
     /**
      * @brief Decode given 1-D Space-Filling key to uint array
@@ -88,8 +123,8 @@ class SFC {
      * @param pMax
      */
     virtual void decode(const UInt v, std::array<DataType, Dims>& x,
-                        const std::array<DataType, Dims> pMin,
-                        const std::array<DataType, Dims> pMax) const = 0;
+                        const std::array<DataType, Dims>& pMin,
+                        const std::array<DataType, Dims>& pMax) const = 0;
 
    protected:
     /**
@@ -124,13 +159,6 @@ class SFC {
     //     // Not impelmented
     //     return T(-1);
     // }
-};
-
-class NotImplemented {
-   public:
-    NotImplemented(const std::string& funcname = __builtin_FUNCTION()) {
-        throw std::runtime_error("Not implemented: " + funcname);
-    }
 };
 
 }  // namespace sfc
