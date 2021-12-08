@@ -9,9 +9,9 @@
 #include <sstream>
 #include <vector>
 
-#include "sfc/zcurve.hpp"
 #include "sfc/hilbert.hpp"
 #include "sfc/utils.hpp"
+#include "sfc/zcurve.hpp"
 #include "zorder_knn/less.hpp"
 
 using hclock = std::chrono::high_resolution_clock;
@@ -25,6 +25,9 @@ using Elem = std::pair<Pt2, uint64_t>;
 
 const float MAX_VAL = 1;
 const float MIN_VAL = -1;
+
+const int nDims = 2;
+const int nBits = 16;
 
 template <typename... Args>
 std::string string_format(const std::string& format, Args... args) {
@@ -108,7 +111,7 @@ void svg_save(std::string filename, std::vector<Pt2> const& pts) {
     svg.close();
 }
 
-void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out, const int nBits) {
+void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out) {
     const uint32_t maxVal = pow(2, nBits);
 
     // Discretize points from [MIN_VAL, MAX_VAL] to [0, maxVal-1]
@@ -124,12 +127,11 @@ void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out, const
     }
 }
 
-void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims,
-                      const int nBits) {
-    sfc::Hilbert<2, float, uint64_t> hilbert;
+void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims) {
+    sfc::Hilbert<float, uint64_t, 2, nBits> hilbert;
 
     std::vector<Pt2ui> pts_ui;
-    normalizePoints(pts, pts_ui, nBits);
+    normalizePoints(pts, pts_ui);
 
     // Convert points to Hilbert codes
     codes.clear();
@@ -140,18 +142,25 @@ void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes,
     }
 }
 
-void convertToMorton(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims,
-                     const int nBits) {
-    sfc::Zcurve<2, float, uint64_t> zcurve2;
+struct point {
+    uint32_t v[2];
+    point(uint32_t a, uint32_t b) : v{a, b} {}
+    const uint32_t operator[](int i) const { return v[i]; }
+};
+
+void convertToMorton(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims) {
+    // sfc::Zcurve<2, float, uint64_t> zcurve2;
+    std::unique_ptr<sfc::SFC<float, uint64_t, 2, nBits>> zcurve2 =
+        std::make_unique<sfc::Zcurve<float, uint64_t, 2, nBits>>();
 
     std::vector<Pt2ui> pts_ui;
-    normalizePoints(pts, pts_ui, nBits);
+    normalizePoints(pts, pts_ui);
 
     // Convert points to Morton codes
     codes.clear();
     codes.reserve(codes.size());
     for (auto& p : pts_ui) {
-        uint64_t code = zcurve2.encode(p);
+        uint64_t code = zcurve2->encode(point(p[0], p[1]));
         codes.push_back(code);
     }
 }
@@ -188,8 +197,6 @@ int main(int argc, char* argv[]) {
     svg_save("example_random.svg", pts);
 
     std::vector<uint64_t> codes;
-    const int nDims = 2;
-    const int nBits = 16;
 
     std::vector<Pt2> sorted_pts;
     sorted_pts.reserve(pts.size());
@@ -198,7 +205,7 @@ int main(int argc, char* argv[]) {
     // Hilbert Curve
     /////////////////////////////////////////////////////////////
     auto start = hclock::now();
-    convertToHilbert(pts, codes, nDims, nBits);
+    convertToHilbert(pts, codes, nDims);
     sortByCodes(pts, codes, sorted_pts);
     duration dur = hclock::now() - start;
 
@@ -209,7 +216,7 @@ int main(int argc, char* argv[]) {
     // Z-Curve
     /////////////////////////////////////////////////////////////
     start = hclock::now();
-    convertToMorton(pts, codes, nDims, nBits);
+    convertToMorton(pts, codes, nDims);
     sortByCodes(pts, codes, sorted_pts);
     dur = hclock::now() - start;
 

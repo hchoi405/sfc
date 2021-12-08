@@ -12,15 +12,14 @@
 namespace sfc {
 using namespace std;
 
-template <int Dims, typename DataType, typename UInt = uint64_t>
-class Hilbert : public SFC<Dims, DataType, UInt> {
-    using Base = SFC<Dims, DataType, UInt>;
+template <typename DataType = float, typename UInt = uint64_t, int Dims = 3, int Bits = 8>
+class Hilbert : public SFC<DataType, UInt, Dims, Bits> {
+    using Base = SFC<DataType, UInt, Dims, Bits>;
 
     // Using base's types
     using typename Base::_Point;
 
     // Using base's memeber variables
-    using Base::numBitsPerAxis;
     using Base::numBitsTotal;
     using Base::numStrataPerAxis;
 
@@ -55,8 +54,8 @@ class Hilbert : public SFC<Dims, DataType, UInt> {
 
    private:
     uint64_t interleave(const uint32_t* X) const {
-        uint64_t start = 1ull << (Dims * numBitsPerAxis - 1), sum = 0;
-        for (int i = numBitsPerAxis - 1; i >= 0; --i) {
+        uint64_t start = 1ull << (Dims * Bits - 1), sum = 0;
+        for (int i = Bits - 1; i >= 0; --i) {
             for (int j = 0; j < Dims; ++j) {
                 // cout << (X[j] >> i & 1);
                 sum += (X[j] >> i & 1) * start;
@@ -69,7 +68,7 @@ class Hilbert : public SFC<Dims, DataType, UInt> {
     void deinterleave(uint32_t* X, const uint64_t v) const {
         // De-interleaving the sum into axes values
         uint64_t src_pos = 1, dst_pos = 1;
-        for (int i = 0; i < numBitsPerAxis; ++i) {
+        for (int i = 0; i < Bits; ++i) {
             for (int j = Dims - 1; j >= 0; --j) {
                 X[j] ^= (-(uint32_t)((v & dst_pos) != 0) ^ X[j]) & src_pos;
                 dst_pos <<= 1;
@@ -79,7 +78,7 @@ class Hilbert : public SFC<Dims, DataType, UInt> {
     }
 
     void FromAxes(uint32_t* X) const {
-        uint32_t M = 1u << (numBitsPerAxis - 1), P, Q, t;
+        uint32_t M = 1u << (Bits - 1), P, Q, t;
         int i;
         // Inverse undo
         for (Q = M; Q > 1; Q >>= 1) {
@@ -115,7 +114,7 @@ class Hilbert : public SFC<Dims, DataType, UInt> {
     }
 
     void ToAxes(uint32_t* X) const {
-        uint32_t N = 2u << (numBitsPerAxis - 1), P, Q, t;
+        uint32_t N = 2u << (Bits - 1), P, Q, t;
         int i;
         // Gray decode by H ^ (H/2)
 

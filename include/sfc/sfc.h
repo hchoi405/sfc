@@ -24,15 +24,8 @@ class NotImplemented {
  * @tparam DataType Type of original data (e.g., float array)
  * @tparam UInt Unsigned integer type for key (e.g., uint64_t)
  */
-template <int Dims = 3, typename DataType = float, typename UInt = uint64_t>
+template <typename DataType = float, typename UInt = uint64_t, int Dims = 3, int Bits = 8>
 class SFC {
-    ///////////////////////////////////////////////////////////////
-    // CHECKS
-    ///////////////////////////////////////////////////////////////
-    static_assert(Dims > 0, "Parameter 'Dims' must be > 0.");
-    static_assert(std::is_constructible<UInt, DataType>::value,
-                  "UInt instance cannot be constructed using DataType.");
-
    protected:
     ///////////////////////////////////////////////////////////////
     // Type Definitions
@@ -40,7 +33,6 @@ class SFC {
     // Point type used as a wrapper for various point classes (e.g., PBRT's Point3f)
     using _Point = Vector<DataType, Dims>;
 
-   protected:
     ///////////////////////////////////////////////////////////////
     // Member variables
     ///////////////////////////////////////////////////////////////
@@ -52,8 +44,15 @@ class SFC {
 		(std::is_same<UInt, uint64_t>::value) ? 64 :
 		(std::is_same<UInt, uint128_t>::value) ? 128 : 0;
     // clang-format on
-    static const int numBitsPerAxis = numBitsTotal / Dims;  // Maximum number of bits per axis
-    static const UInt numStrataPerAxis = UInt(1) << numBitsPerAxis;  // Number of strata per axis
+    static const UInt numStrataPerAxis = UInt(1) << Bits;  // Number of strata per axis
+
+    ///////////////////////////////////////////////////////////////
+    // CHECKS
+    ///////////////////////////////////////////////////////////////
+    static_assert(Dims > 0, "Parameter 'Dims' must be > 0.");
+    static_assert(std::is_constructible<UInt, DataType>::value,
+                  "UInt instance cannot be constructed using DataType.");
+    static_assert(Dims * Bits < numBitsTotal);
 
    public:
     ///////////////////////////////////////////////////////////////

@@ -8,15 +8,14 @@
 using namespace boost::multiprecision;
 
 namespace sfc {
-template <int Dims, typename DataType, typename UInt = uint64_t>
-class Zcurve : public SFC<Dims, DataType, UInt> {
-    using Base = SFC<Dims, DataType, UInt>;
+template <typename DataType = float, typename UInt = uint64_t, int Dims = 3, int Bits = 8>
+class Zcurve : public SFC<DataType, UInt, Dims, Bits> {
+    using Base = SFC<DataType, UInt, Dims, Bits>;
 
     // Using base's types
     using typename Base::_Point;
 
     // Using base's member variables
-    using Base::numBitsPerAxis;
     using Base::numBitsTotal;
     using Base::numStrataPerAxis;
 
@@ -25,10 +24,10 @@ class Zcurve : public SFC<Dims, DataType, UInt> {
         typename std::conditional<std::is_same<UInt, uint128_t>::value,
                                   boost::multiprecision::cpp_dec_float_50, float>::type;
     const float eps = 1e-6f;
-    const int numMagicBits = (int)log2(numBitsPerAxis) + 1;
+    const int numMagicBits = (int)log2(Bits) + 1;
     const UInt One = 1;
-    const UInt oneShiftedByFieldBits = One << numBitsPerAxis;
-    const size_t oneShiftedByLogFieldBits = size_t((Dims - 1) * (One << int(log2(numBitsPerAxis))));
+    const UInt oneShiftedByFieldBits = One << Bits;
+    const size_t oneShiftedByLogFieldBits = size_t((Dims - 1) * (One << int(log2(Bits))));
 
     std::vector<UInt> magicBits;
 
@@ -36,9 +35,9 @@ class Zcurve : public SFC<Dims, DataType, UInt> {
     Zcurve() {
         std::cout << "\t[Initialization of Z-Curve]\n"
                   << "\t\tUse " << numBitsTotal << " bits for " << Dims << " dimension of data\n"
-                  << "\t\tEach field uses: " << numBitsPerAxis << " bits" << std::endl;
+                  << "\t\tEach field uses: " << Bits << " bits" << std::endl;
         magicBits.resize(numMagicBits);
-        getMagicBits(&(magicBits[0]), numBitsTotal, numBitsPerAxis, Dims);
+        getMagicBits(&(magicBits[0]), numBitsTotal, Bits, Dims);
     }
 
    public:
@@ -165,8 +164,6 @@ class Zcurve : public SFC<Dims, DataType, UInt> {
     }
 
     void getMagicBits(UInt* mBits, int totalBits, int bitsPerAxis, int dimension) {
-        assert(totalBits / dimension == bitsPerAxis);
-        assert(totalBits <= numBitsTotal);
         assert(bitsPerAxis <
                sizeof(size_t) * 8);  // sizeof(size_t)*8 = 64 is the maximum size of integer
                                      // that can be used as an operand for shift operator
