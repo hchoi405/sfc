@@ -39,29 +39,25 @@ std::string string_format(const std::string& format, Args... args) {
 
 std::string svg_circle(std::size_t id, Pt2 const& c_xy, float r = 0.2f) {
     std::stringstream circle;
-    circle << "<circle id=\"circle" << id << "\" cx=\"" << c_xy[0] << "\" cy=\""
-           << c_xy[1] << "\" r=\"" << r << "\"/>";
+    circle << "<circle id=\"circle" << id << "\" cx=\"" << c_xy[0] << "\" cy=\"" << c_xy[1]
+           << "\" r=\"" << r << "\"/>";
     return circle.str();
 }
 
-std::string svg_path(std::size_t id, float s, Pt2 const& p0, Pt2 const& p1,
-                     float w = 0.2) {
+std::string svg_path(std::size_t id, float s, Pt2 const& p0, Pt2 const& p1, float w = 0.2) {
     std::stringstream path;
-    path << "<path id=\"path" << id << "\" style=\"stroke:#"
-         << std::setfill('0') << std::hex << std::setw(2)
-         << static_cast<int>(255.0f * s) << std::setw(2) << 0u << std::setw(2)
-         << static_cast<int>(255.0f * (1.0 - s)) << ";stroke-width:" << w
-         << "\" d=\"M " << p0[0] << "," << p0[1] << " " << p1[0] << "," << p1[1]
-         << "\"/>";
+    path << "<path id=\"path" << id << "\" style=\"stroke:#" << std::setfill('0') << std::hex
+         << std::setw(2) << static_cast<int>(255.0f * s) << std::setw(2) << 0u << std::setw(2)
+         << static_cast<int>(255.0f * (1.0 - s)) << ";stroke-width:" << w << "\" d=\"M " << p0[0]
+         << "," << p0[1] << " " << p1[0] << "," << p1[1] << "\"/>";
     return path.str();
 }
 
 void svg_save(std::string filename, std::vector<Pt2> const& pts) {
-    auto it = std::max_element(
-        pts.begin(), pts.end(), [](const Pt2& lhs, const Pt2& rhs) {
-            return *std::max_element(lhs.begin(), lhs.end()) <
-                   *std::max_element(rhs.begin(), rhs.end());
-        });
+    auto it = std::max_element(pts.begin(), pts.end(), [](const Pt2& lhs, const Pt2& rhs) {
+        return *std::max_element(lhs.begin(), lhs.end()) <
+               *std::max_element(rhs.begin(), rhs.end());
+    });
     auto maxVal = *std::max_element(it->begin(), it->end());
     auto radius = maxVal * 0.01f;
     auto width = maxVal * 0.02f;
@@ -102,8 +98,7 @@ void svg_save(std::string filename, std::vector<Pt2> const& pts) {
     svg << header;
     for (std::size_t i(0); i < pts.size() - 1; ++i) {
         svg << "  "
-            << svg_path(i, static_cast<float>(i) / (pts.size() - 2), pts[i],
-                        pts[i + 1], width)
+            << svg_path(i, static_cast<float>(i) / (pts.size() - 2), pts[i], pts[i + 1], width)
             << "\n";
     }
     for (std::size_t i(0); i < pts.size(); ++i) {
@@ -113,8 +108,7 @@ void svg_save(std::string filename, std::vector<Pt2> const& pts) {
     svg.close();
 }
 
-void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out,
-                     const int nBits) {
+void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out, const int nBits) {
     const uint32_t maxVal = pow(2, nBits);
     hj::print(maxVal);
 
@@ -131,9 +125,9 @@ void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out,
     }
 }
 
-void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes,
-                      const int nDims, const int nBits) {
-    hj::Hilbert hilbert(nDims, nBits);
+void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims,
+                      const int nBits) {
+    hj::Hilbert<2, float, uint64_t> hilbert(nDims, nBits);
 
     std::vector<Pt2ui> pts_ui;
     normalizePoints(pts, pts_ui, nBits);
@@ -147,33 +141,32 @@ void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes,
     }
 }
 
-void convertToMorton(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes,
-                     const int nDims, const int nBits) {
-    hj::Zcurve<3, float, uint64_t> zcurve3;
+void convertToMorton(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims,
+                     const int nBits) {
+    hj::Zcurve<2, float, uint64_t> zcurve2;
 
     std::vector<Pt2ui> pts_ui;
     normalizePoints(pts, pts_ui, nBits);
 
-    // // Convert points to Hilbert codes
-    // codes.clear();
-    // codes.reserve(codes.size());
-    // for (auto& p : pts_ui) {
-    //     uint64_t code = zcurve3.getMortonKey(p.data());
-    //     codes.push_back(code);
-    // }
+    // Convert points to Morton codes
+    codes.clear();
+    codes.reserve(codes.size());
+    for (auto& p : pts_ui) {
+        uint64_t code = zcurve2.encode(p.data());
+        codes.push_back(code);
+    }
 }
 
-void sortByCodes(const std::vector<Pt2>& pts,
-                 const std::vector<uint64_t>& codes, std::vector<Pt2>& out) {
+void sortByCodes(const std::vector<Pt2>& pts, const std::vector<uint64_t>& codes,
+                 std::vector<Pt2>& out) {
     std::vector<Elem> pairs;
     pairs.clear();
     pairs.reserve(pts.size());
     for (size_t i = 0; i < codes.size(); ++i) {
         pairs.push_back({pts[i], codes[i]});
     }
-    std::sort(pairs.begin(), pairs.end(), [](const auto& lhs, const auto& rhs) {
-        return lhs.second < rhs.second;
-    });
+    std::sort(pairs.begin(), pairs.end(),
+              [](const auto& lhs, const auto& rhs) { return lhs.second < rhs.second; });
 
     out.resize(pts.size());
     for (size_t i = 0; i < pairs.size(); ++i) {
