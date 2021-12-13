@@ -50,20 +50,22 @@ class SFC {
     static_assert(Dims > 0, "Parameter 'Dims' must be > 0.");
     static_assert(std::is_constructible<UInt, DataType>::value,
                   "UInt instance cannot be constructed using DataType.");
-    static_assert(Dims * Bits < NumBitsTotal);
+    static_assert(Bits <= 32, "Bits should be less than 32.");
+    static_assert(Dims * Bits <= NumBitsTotal);
 
    public:
     ///////////////////////////////////////////////////////////////
-    // Functions (Interfaces)
+    // Functions (Implementations)
     ///////////////////////////////////////////////////////////////
     /**
-     * @brief Encode given ArrayLike type of point as a 1-D Space-Filling key
+     * @brief Encode given point as a 1-D Space-Filling key. This is a template
+     * funciton to handle arbitrary type of array by converting it ot std::array<uint32_t, Dims>.
      *
-     * @param x ArrayLike type which has an operator[] and in range [0, numStrataPerAxis)
+     * @param x which has an operator[] and in range [0, numStrataPerAxis)
      * @return UInt
      */
-    template <typename ArrayLike>
-    UInt encode(const ArrayLike& x) const {
+    template <typename UIntPoint>
+    UInt encode(const UIntPoint& x) const {
         std::array<uint32_t, Dims> uarr;
         for (int i = 0; i < Dims; ++i) uarr[i] = x[i];
 
@@ -76,14 +78,17 @@ class SFC {
      * @param x ArrayLike type which has an operator[] and in range [pMin, pMax]
      * @return UInt
      */
-    template <typename ArrayLike>
-    UInt encode(const ArrayLike& x, const ArrayLike& pMin, const ArrayLike& pMax) const {
+    template <typename FloatPoint>
+    UInt encode(const FloatPoint& x, const FloatPoint& pMin, const FloatPoint& pMax) const {
         std::array<uint32_t, Dims> uarr;
         for (int i = 0; i < Dims; ++i) uarr[i] = normalize(x[i], pMin[i], pMax[i]);
 
         return encode(uarr);
     }
 
+    ///////////////////////////////////////////////////////////////
+    // Functions (Interfaces)
+    ///////////////////////////////////////////////////////////////
     /**
      * @brief Encode given uint array as a 1-D Space-Filling key
      *

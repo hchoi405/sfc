@@ -23,7 +23,7 @@ class Zcurve : public SFC<DataType, UInt, Dims, Bits> {
     const int NumMagicBits = (int)log2(Bits) + 1;
     const UInt One = 1;
     const UInt OneShiftedByFieldBits = One << Bits;
-    const size_t OneShiftedByLogFieldBits = size_t((Dims - 1) * (One << int(log2(Bits))));
+    const UInt OneShiftedByLogFieldBits = UInt((Dims - 1) * (One << int(log2(Bits))));
 
     std::vector<UInt> magicBits;
 
@@ -33,7 +33,7 @@ class Zcurve : public SFC<DataType, UInt, Dims, Bits> {
                   << "\t\tUse " << NumBitsTotal << " bits for " << Dims << " dimension of data\n"
                   << "\t\tEach field uses: " << Bits << " bits" << std::endl;
         magicBits.resize(NumMagicBits);
-        getMagicBits(&(magicBits[0]), NumBitsTotal, Bits, Dims);
+        getMagicBits(&(magicBits[0]));
     }
 
     UInt encode(const std::array<uint32_t, Dims>& x) const { return getMortonKey(x); }
@@ -112,7 +112,7 @@ class Zcurve : public SFC<DataType, UInt, Dims, Bits> {
     }
 
     inline UInt getMortonKey(const uint32_t& _v) const {
-        static auto bit_and = std::bit_and<uint32_t>();
+        static auto bit_and = std::bit_and<UInt>();
 
         auto x = bit_and(_v, OneShiftedByFieldBits - 1);  // take field bits
         size_t remainingBits = OneShiftedByLogFieldBits;
@@ -125,24 +125,22 @@ class Zcurve : public SFC<DataType, UInt, Dims, Bits> {
         return x;
     }
 
-    void getMagicBits(UInt* mBits, int totalBits, int bitsPerAxis, int dimension) {
-        assert(bitsPerAxis <
-               sizeof(size_t) * 8);  // sizeof(size_t)*8 = 64 is the maximum size of integer
-                                     // that can be used as an operand for shift operator
-
-        const UInt one = 1;
+    void getMagicBits(UInt* mBits) {
+        static_assert(Bits <
+                      sizeof(size_t) * 8);  // sizeof(size_t)*8 = 64 is the maximum size of integer
+                                            // that can be used as an operand for shift operator
 
         // 8 bits
-        size_t leftMostBit = size_t(one << size_t(log2(bitsPerAxis)));
+        size_t leftMostBit = size_t(One << size_t(log2(Bits)));
         // 8 bits with all 1
-        UInt a = (one << leftMostBit) - 1;
+        UInt a = (One << leftMostBit) - 1;
 
-        UInt b = a | (a << (leftMostBit * dimension));
+        UInt b = a | (a << (leftMostBit * Dims));
         int idx = 0;
         mBits[idx++] = b;
         while (leftMostBit > 1) {
             UInt c = b & (b << (leftMostBit / 2));
-            b = b ^ c ^ (c << (leftMostBit / 2) * (dimension - 1));
+            b = b ^ c ^ (c << (leftMostBit / 2) * (Dims - 1));
             mBits[idx++] = b;
             leftMostBit /= 2;
         }
