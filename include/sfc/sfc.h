@@ -1,11 +1,11 @@
 #ifndef HJ_SFC
 #define HJ_SFC
 
-#include <stdint.h>
-
+#include <boost/multiprecision/cpp_int.hpp>
+#include <cstdint>
 #include <vector>
 
-#include "Vector.h"
+using namespace boost::multiprecision;
 
 namespace sfc {
 
@@ -30,21 +30,19 @@ class SFC {
     ///////////////////////////////////////////////////////////////
     // Type Definitions
     ///////////////////////////////////////////////////////////////
-    // Point type used as a wrapper for various point classes (e.g., PBRT's Point3f)
-    using _Point = Vector<DataType, Dims>;
 
     ///////////////////////////////////////////////////////////////
     // Member variables
     ///////////////////////////////////////////////////////////////
     // clang-format off
-	static const int numBitsTotal =
+	static const int NumBitsTotal =
 		(std::is_same<UInt, uint8_t>::value) ? 8 :
 		(std::is_same<UInt, uint16_t>::value) ? 16 :
 		(std::is_same<UInt, uint32_t>::value) ? 32 :
 		(std::is_same<UInt, uint64_t>::value) ? 64 :
 		(std::is_same<UInt, uint128_t>::value) ? 128 : 0;
     // clang-format on
-    static const UInt numStrataPerAxis = UInt(1) << Bits;  // Number of strata per axis
+    static const UInt NumStrataPerAxis = UInt(1) << Bits;  // Number of strata per axis
 
     ///////////////////////////////////////////////////////////////
     // CHECKS
@@ -52,7 +50,7 @@ class SFC {
     static_assert(Dims > 0, "Parameter 'Dims' must be > 0.");
     static_assert(std::is_constructible<UInt, DataType>::value,
                   "UInt instance cannot be constructed using DataType.");
-    static_assert(Dims * Bits < numBitsTotal);
+    static_assert(Dims * Bits < NumBitsTotal);
 
    public:
     ///////////////////////////////////////////////////////////////
@@ -141,7 +139,7 @@ class SFC {
         auto size = (pMax - pMin);
 
         // [0,0] ~ [1,1]
-        return std::min((origin / size) * numStrataPerAxis, T(numStrataPerAxis - 1));
+        return std::min((origin / size) * NumStrataPerAxis, T(NumStrataPerAxis - 1));
     }
 
     /**

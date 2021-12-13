@@ -2,7 +2,6 @@
 
 #include <boost/multiprecision/cpp_dec_float.hpp>
 
-#include "Vector.h"
 #include "sfc.h"
 
 using namespace boost::multiprecision;
@@ -12,43 +11,32 @@ template <typename DataType = float, typename UInt = uint64_t, int Dims = 3, int
 class Zcurve : public SFC<DataType, UInt, Dims, Bits> {
     using Base = SFC<DataType, UInt, Dims, Bits>;
 
-    // Using base's types
-    using typename Base::_Point;
-
     // Using base's member variables
-    using Base::numBitsTotal;
-    using Base::numStrataPerAxis;
+    using Base::NumBitsTotal;
+    using Base::NumStrataPerAxis;
 
     // Own member variables
     using bigfloat =
         typename std::conditional<std::is_same<UInt, uint128_t>::value,
                                   boost::multiprecision::cpp_dec_float_50, float>::type;
-    const float eps = 1e-6f;
-    const int numMagicBits = (int)log2(Bits) + 1;
+    const float Eps = 1e-6f;
+    const int NumMagicBits = (int)log2(Bits) + 1;
     const UInt One = 1;
-    const UInt oneShiftedByFieldBits = One << Bits;
-    const size_t oneShiftedByLogFieldBits = size_t((Dims - 1) * (One << int(log2(Bits))));
+    const UInt OneShiftedByFieldBits = One << Bits;
+    const size_t OneShiftedByLogFieldBits = size_t((Dims - 1) * (One << int(log2(Bits))));
 
     std::vector<UInt> magicBits;
 
    public:
     Zcurve() {
         std::cout << "\t[Initialization of Z-Curve]\n"
-                  << "\t\tUse " << numBitsTotal << " bits for " << Dims << " dimension of data\n"
+                  << "\t\tUse " << NumBitsTotal << " bits for " << Dims << " dimension of data\n"
                   << "\t\tEach field uses: " << Bits << " bits" << std::endl;
-        magicBits.resize(numMagicBits);
-        getMagicBits(&(magicBits[0]), numBitsTotal, Bits, Dims);
+        magicBits.resize(NumMagicBits);
+        getMagicBits(&(magicBits[0]), NumBitsTotal, Bits, Dims);
     }
 
-   public:
-    UInt encode(const std::array<uint32_t, Dims>& x) const {
-        UInt result = 0;
-        for (int i = 0; i < Dims; i++) {
-            assert(x[i] >= 0 && x[i] < numStrataPerAxis);
-            result |= (getMortonKey(x[i]) << i);
-        }
-        return result;
-    }
+    UInt encode(const std::array<uint32_t, Dims>& x) const { return getMortonKey(x); }
     UInt encode(const std::array<DataType, Dims>& x, const std::array<DataType, Dims>& pMin,
                 const std::array<DataType, Dims>& pMax) const {
         std::array<uint32_t, Dims> uarr;
@@ -64,98 +52,72 @@ class Zcurve : public SFC<DataType, UInt, Dims, Bits> {
 
    public:
     // For arbtrary type of element with accessor
-    template <typename ArrayElementType>
-    void order(const _Point& pmin, const _Point& pmax, std::vector<ArrayElementType>& arr,
-               const std::function<_Point&(ArrayElementType&)>& accessor = 0,
-               const std::function<void(void)>& progressUpdate = 0) const {
-        std::vector<std::pair<_Point, UInt>> ordered(arr.size());
+    template <typename ArrayLike>
+    void order(
+        const ArrayLike& pmin, const ArrayLike& pmax, std::vector<ArrayLike>& arr,
+        const std::function<ArrayLike&(ArrayLike&)>& accessor = [](ArrayLike& e) { return e; },
+        const std::function<void(void)>& progressUpdate = 0) const {
+        std::vector<std::pair<ArrayLike, UInt>> ordered(arr.size());
 
         for (size_t i = 0; i < arr.size(); ++i) {
-            _Point& v = accessor(arr[i]);
-            auto p = normalize(v, pmin - eps, pmax + eps);
+            ArrayLike& v = accessor(arr[i]);
+            auto p = normalize(v, pmin - Eps, pmax + Eps);
             UInt key = getMortonKey(p);
             ordered[i] = std::make_pair(v, key);
         }
 
-        std::sort(ordered.begin(), ordered.end(),
-                  [&progressUpdate](std::pair<_Point, UInt>& lhs, std::pair<_Point, UInt>& rhs) {
-                      if (progressUpdate) progressUpdate();
-                      return lhs.second < rhs.second;
-                  });
+        std::sort(
+            ordered.begin(), ordered.end(),
+            [&progressUpdate](std::pair<ArrayLike, UInt>& lhs, std::pair<ArrayLike, UInt>& rhs) {
+                if (progressUpdate) progressUpdate();
+                return lhs.second < rhs.second;
+            });
 
         for (auto i = 0u; i < arr.size(); ++i) {
             accessor(arr[i]) = ordered[i].first;
         }
     }
 
-    // Overloading for sfc::Vector
-    void order(const _Point& pmin, const _Point& pmax, std::vector<_Point>& arr,
-               const std::function<_Point&(_Point&)>& accessor = 0,
-               const std::function<void(void)>& progressUpdate = 0) const {
-        std::vector<std::pair<_Point, UInt>> ordered(arr.size());
-
-        for (size_t i = 0; i < arr.size(); ++i) {
-            _Point& v = arr[i];
-            auto p = normalize(v, pmin - eps, pmax + eps);
-            UInt key = getMortonKey(p);
-            ordered[i] = std::make_pair(v, key);
-        }
-
-        std::sort(ordered.begin(), ordered.end(),
-                  [&progressUpdate](std::pair<_Point, UInt>& lhs, std::pair<_Point, UInt>& rhs) {
-                      if (progressUpdate) progressUpdate();
-                      return lhs.second < rhs.second;
-                  });
-
-        for (auto i = 0u; i < arr.size(); ++i) {
-            arr[i] = ordered[i].first;
-        }
+    /**
+     * @brief Get the Morton Key object
+     *
+     * @tparam ArrayLike
+     * @param p
+     * @param pMin
+     * @param pMax
+     * @return UInt
+     */
+    template <typename ArrayLike>
+    inline UInt getMortonKey(const ArrayLike& p, const ArrayLike& pMin,
+                             const ArrayLike& pMax) const {
+        return getMortonKey(Base::normalize(p, pMin - Eps, pMax + Eps));
     }
 
-    // Overloading for std::array
-    void order(const _Point& pmin, const _Point& pmax,
-               std::vector<std::array<DataType, Dims>>& arr) const {
-        std::vector<std::pair<_Point, UInt>> ordered(arr.size());
-
-        for (size_t i = 0; i < arr.size(); ++i) {
-            _Point v(arr[i]);
-            auto p = Base::normalize(v, pmin - eps, pmax + eps);
-            UInt key = getMortonKey(p);
-            ordered[i] = std::make_pair(v, key);
-        }
-
-        std::sort(ordered.begin(), ordered.end(),
-                  [](std::pair<_Point, UInt>& lhs, std::pair<_Point, UInt>& rhs) {
-                      return lhs.second < rhs.second;
-                  });
-
-        for (auto i = 0u; i < arr.size(); ++i) {
-            arr[i] = ordered[i].first;
-        }
-    }
-
-    inline UInt getMortonKey(const _Point& p, const _Point& pMin, const _Point& pMax) const {
-        return getMortonKey(normalize(p, pMin - eps, pMax + eps));
-    }
-
-    // input: _p normalized point in [0, 1]
-    inline UInt getMortonKey(const _Point& _p) const {
+    /**
+     * @brief Get the Morton Key object
+     *
+     * @tparam ArrayLike
+     * @param _p point in [0, NuMStrataPerAxis-1]
+     * @return UInt Morton key
+     */
+    template <typename ArrayLike>
+    inline UInt getMortonKey(const ArrayLike& _p) const {
         UInt result = 0;
 
         for (int i = 0; i < Dims; i++) {
-            result |= (getMortonKey(UInt(bigfloat(_p[i]) * bigfloat(numStrataPerAxis))) << i);
+            result |= (getMortonKey(_p[i]) << i);
         }
 
         return result;
     }
 
-    inline UInt getMortonKey(const UInt& _v) const {
-        static auto bit_and = std::bit_and<UInt>();
+    inline UInt getMortonKey(const uint32_t& _v) const {
+        static auto bit_and = std::bit_and<uint32_t>();
 
-        auto x = bit_and(_v, oneShiftedByFieldBits - 1);  // take field bits
-        size_t remainingBits = oneShiftedByLogFieldBits;
+        auto x = bit_and(_v, OneShiftedByFieldBits - 1);  // take field bits
+        size_t remainingBits = OneShiftedByLogFieldBits;
         int idx = 0;
-        for (int i = 0; i < numMagicBits; ++i) {
+        for (int i = 0; i < NumMagicBits; ++i) {
             x = (x | (x << remainingBits)) & magicBits[idx++];
             remainingBits /= 2;
         }
@@ -178,30 +140,30 @@ class Zcurve : public SFC<DataType, UInt, Dims, Bits> {
         UInt b = a | (a << (leftMostBit * dimension));
         int idx = 0;
         mBits[idx++] = b;
-        // std::cout << b << std::endl;
         while (leftMostBit > 1) {
             UInt c = b & (b << (leftMostBit / 2));
             b = b ^ c ^ (c << (leftMostBit / 2) * (dimension - 1));
             mBits[idx++] = b;
-            // std::cout << b << std::endl;
             leftMostBit /= 2;
         }
     }
 
     // For-loop basaed calculation with bugs (results are different from magic bits)
-    UInt getMortonKey_for(const _Point& p, const _Point& pMin, const _Point& pMax) const {
-        return getMortonKey_for(normalize(p, pMin - eps, pMax + eps));
+    template <typename ArrayLike>
+    UInt getMortonKey_for(const ArrayLike& p, const ArrayLike& pMin, const ArrayLike& pMax) const {
+        return getMortonKey_for(normalize(p, pMin - Eps, pMax + Eps));
     }
 
-    UInt getMortonKey_for(const _Point& _p) const {
+    template <typename ArrayLike>
+    UInt getMortonKey_for(const ArrayLike& _p) const {
         UInt result = 0;
 
-        Vector<UInt, Dims> floored;
+        ArrayLike floored;
         for (int i = 0; i < Dims; ++i) {
-            floored[i] = UInt(bigfloat(_p[i]) * bigfloat(numStrataPerAxis));
+            floored[i] = UInt(bigfloat(_p[i]) * bigfloat(NumStrataPerAxis));
         }
 
-        for (int i = 0; i < numBitsTotal; i++) {
+        for (int i = 0; i < NumBitsTotal; i++) {
             for (int j = 0; j < Dims; ++j) {
                 result = result | ((floored[j] & (1ULL << i)) << (i + j));
             }

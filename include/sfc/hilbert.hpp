@@ -16,12 +16,9 @@ template <typename DataType = float, typename UInt = uint64_t, int Dims = 3, int
 class Hilbert : public SFC<DataType, UInt, Dims, Bits> {
     using Base = SFC<DataType, UInt, Dims, Bits>;
 
-    // Using base's types
-    using typename Base::_Point;
-
     // Using base's memeber variables
-    using Base::numBitsTotal;
-    using Base::numStrataPerAxis;
+    using Base::NumBitsTotal;
+    using Base::NumStrataPerAxis;
 
     // Own member variables
 
