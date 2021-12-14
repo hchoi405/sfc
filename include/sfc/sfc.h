@@ -20,9 +20,10 @@ class NotImplemented {
  * @brief An abstract Space-Filling Curve class that has common variables for
  * all SFC methods like number of bits per dimension.
  *
- * @tparam Dims Number of dimensions (e.g., 3 for 3-D space)
  * @tparam DataType Type of original data (e.g., float array)
  * @tparam UInt Unsigned integer type for key (e.g., uint64_t)
+ * @tparam Dims Number of dimensions (e.g., 3 for 3-D space)
+ * @tparam Bits Number of bits per dimension (e.g., 10 bits for 3-D space uses total 30 bits)
  */
 template <typename DataType = float, typename UInt = uint64_t, int Dims = 3, int Bits = 8>
 class SFC {
@@ -86,6 +87,88 @@ class SFC {
         return encode(uarr);
     }
 
+    /**
+     * @brief Decode for UIntPoint type
+     *
+     * @tparam UIntPoint array-like point type
+     * @param v Code encoded by space-filling curve
+     * @param x Output int [0, NumStrataPerAxis)
+     */
+    template <typename UIntPoint>
+    void decode(const UInt v, UIntPoint& x) const {
+        std::array<uint32_t, Dims> uarr{};
+        decode(v, uarr);
+
+        for (int i = 0; i < Dims; ++i) x[i] = uarr[i];
+    }
+
+    /**
+     * @brief Decode for UIntPoint type
+     *
+     * @tparam UIntPoint array-like point type
+     * @param v Code encoded by space-filling curve
+     * @param x Output int [0, NumStrataPerAxis)
+     */
+    template <typename UIntPoint>
+    void decode(const UInt v, UIntPoint* x) const {
+        std::array<uint32_t, Dims> uarr{};
+        decode(v, uarr);
+
+        for (int i = 0; i < Dims; ++i) x[i] = uarr[i];
+    }
+
+    /**
+     * @brief Decode for FloatPoint type
+     *
+     * @tparam FloatPoint point type with float elements
+     * @param v Code encoded by space-filling curve
+     * @param x Output int [pMin, pMax]
+     * @param pMin Minimum value for output
+     * @param pMax Maximum value for output
+     */
+    template <typename FloatPoint>
+    void decode(const UInt v, FloatPoint& x, const FloatPoint& pMin, const FloatPoint& pMax) const {
+        std::array<uint32_t, Dims> uarr{};
+        decode(v, uarr);
+
+        for (int i = 0; i < Dims; ++i) x[i] = denormalize(uarr[i], pMin[i], pMax[i]);
+    }
+
+    /**
+     * @brief Normalization value in range [pMin, pMax] to [0, numStrataPerAxis-1]
+     *
+     * @param val
+     * @param pMin
+     * @param pMax
+     * @return T
+     */
+    template <typename T>
+    inline static uint32_t normalize(const T& val, const T& pMin, const T& pMax) {
+        assert(val >= pMin && val <= pMax);
+        auto origin = (val - pMin);
+        auto size = (pMax - pMin);
+
+        return std::min(uint32_t((origin / size) * NumStrataPerAxis),
+                        uint32_t(NumStrataPerAxis - 1));
+    }
+
+    /**
+     * @brief De-normalize value in range [0, numStrataPerAxis - 1] to [pMin, pMax]
+     *
+     * @tparam T
+     * @param val
+     * @param pMin
+     * @param pMax
+     * @return T
+     */
+    template <typename T>
+    inline static T denormalize(const uint32_t& val, const T& pMin, const T& pMax) {
+        T v = T(val) / NumStrataPerAxis;
+        v *= (pMax - pMin);
+        v += pMin;
+        return v;
+    }
+
     ///////////////////////////////////////////////////////////////
     // Functions (Interfaces)
     ///////////////////////////////////////////////////////////////
@@ -127,40 +210,6 @@ class SFC {
     virtual void decode(const UInt v, std::array<DataType, Dims>& x,
                         const std::array<DataType, Dims>& pMin,
                         const std::array<DataType, Dims>& pMax) const = 0;
-
-   protected:
-    /**
-     * @brief Normalization value in range [pMin, pMax] to [0, numStrataPerAxis-1]
-     *
-     * @param val
-     * @param pMin
-     * @param pMax
-     * @return T
-     */
-    template <typename T>
-    inline static T normalize(const T& val, const T& pMin, const T& pMax) {
-        assert(val >= pMin && val <= pMax);
-        auto origin = (val - pMin);
-        auto size = (pMax - pMin);
-
-        // [0,0] ~ [1,1]
-        return std::min((origin / size) * NumStrataPerAxis, T(NumStrataPerAxis - 1));
-    }
-
-    /**
-     * @brief De-normalize value in range [0, numStrataPerAxis - 1] to [pMin, pMax]
-     *
-     * @tparam T
-     * @param val
-     * @param pMin
-     * @param pMax
-     * @return T
-     */
-    // template <typename T>
-    // inline static T denormalize(const T& val, const T& pMin, const T& pMax) {
-    //     // Not impelmented
-    //     return T(-1);
-    // }
 };
 
 }  // namespace sfc

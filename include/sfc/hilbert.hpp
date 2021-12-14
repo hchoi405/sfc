@@ -50,8 +50,8 @@ class Hilbert : public SFC<DataType, UInt, Dims, Bits> {
     }
 
    private:
-    uint64_t interleave(const uint32_t* X) const {
-        uint64_t start = 1ull << (Dims * Bits - 1), sum = 0;
+    UInt interleave(const uint32_t* X) const {
+        UInt start = 1ull << (Dims * Bits - 1), sum = 0;
         for (int i = Bits - 1; i >= 0; --i) {
             for (int j = 0; j < Dims; ++j) {
                 // cout << (X[j] >> i & 1);
@@ -62,9 +62,9 @@ class Hilbert : public SFC<DataType, UInt, Dims, Bits> {
         return sum;
     }
 
-    void deinterleave(uint32_t* X, const uint64_t v) const {
+    void deinterleave(uint32_t* X, const UInt v) const {
         // De-interleaving the sum into axes values
-        uint64_t src_pos = 1, dst_pos = 1;
+        UInt src_pos = 1, dst_pos = 1;
         for (int i = 0; i < Bits; ++i) {
             for (int j = Dims - 1; j >= 0; --j) {
                 X[j] ^= (-(uint32_t)((v & dst_pos) != 0) ^ X[j]) & src_pos;

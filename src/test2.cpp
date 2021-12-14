@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "sfc/hilbert.hpp"
+#include "sfc/svg.h"
 #include "sfc/utils.hpp"
 #include "sfc/zcurve.hpp"
 #include "zorder_knn/less.hpp"
@@ -17,155 +18,88 @@
 using hclock = std::chrono::high_resolution_clock;
 using duration = std::chrono::duration<float>;
 
-// template <typename T, std::size_t d>
-// using Pt = std::array<T, d>;
-using Pt2 = std::array<float, 2>;
-using Pt2ui = std::array<uint32_t, 2>;
-using Elem = std::pair<Pt2, uint64_t>;
-
-const float MAX_VAL = 1;
-const float MIN_VAL = -1;
-
+// Configs
+using PointType = float;
+using Pt2 = std::array<PointType, 2>;
+using CodeType = uint32_t;
+const PointType MAX_VAL = 1;
+const PointType MIN_VAL = -1;
 const int nDims = 2;
-const int nBits = 16;
+const int nBits = 5;
 
-template <typename... Args>
-std::string string_format(const std::string& format, Args... args) {
-    size_t size = snprintf(nullptr, 0, format.c_str(), args...) + 1;
-    if (size <= 0) {
-        throw std::runtime_error("Error during formatting.");
-    }
-    std::unique_ptr<char[]> buf(new char[size]);
-    snprintf(buf.get(), size, format.c_str(), args...);
-    return std::string(buf.get(), buf.get() + size - 1);
-}
+// Type alias
+using Pt2ui = std::array<uint32_t, 2>;
+using Elem = std::pair<Pt2, CodeType>;
 
-std::string svg_circle(std::size_t id, Pt2 const& c_xy, float r = 0.2f) {
-    std::stringstream circle;
-    circle << "<circle id=\"circle" << id << "\" cx=\"" << c_xy[0] << "\" cy=\"" << c_xy[1]
-           << "\" r=\"" << r << "\"/>";
-    return circle.str();
-}
+using SFC23 = sfc::SFC<PointType, CodeType, nDims, nBits>;
+using Hilbert23 = sfc::Hilbert<PointType, CodeType, nDims, nBits>;
+using Zcurve23 = sfc::Zcurve<PointType, CodeType, nDims, nBits>;
 
-std::string svg_path(std::size_t id, float s, Pt2 const& p0, Pt2 const& p1, float w = 0.2) {
-    std::stringstream path;
-    path << "<path id=\"path" << id << "\" style=\"stroke:#" << std::setfill('0') << std::hex
-         << std::setw(2) << static_cast<int>(255.0f * s) << std::setw(2) << 0u << std::setw(2)
-         << static_cast<int>(255.0f * (1.0 - s)) << ";stroke-width:" << w << "\" d=\"M " << p0[0]
-         << "," << p0[1] << " " << p1[0] << "," << p1[1] << "\"/>";
-    return path.str();
-}
-
-void svg_save(std::string filename, std::vector<Pt2> const& pts) {
-    auto it = std::max_element(pts.begin(), pts.end(), [](const Pt2& lhs, const Pt2& rhs) {
-        return *std::max_element(lhs.begin(), lhs.end()) <
-               *std::max_element(rhs.begin(), rhs.end());
-    });
-    auto maxVal = *std::max_element(it->begin(), it->end());
-    auto radius = maxVal * 0.01f;
-    auto width = maxVal * 0.02f;
-    // std::cout << "maxVal: " << maxVal << std::endl;
-    // std::cout << "circle radius: " << radius << std::endl;
-    // std::cout << "path width: " << width << std::endl;
-
-    const std::string header = string_format(
-        "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
-        "<svg id=\"svg8\""
-        " xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\""
-        " xmlns=\"http://www.w3.org/2000/svg\""
-        " width=\"1024px\" height=\"1024px\""
-        " version=\"1.1\""
-        " xmlns:cc=\"http://creativecommons.org/ns#\""
-        " xmlns:dc=\"http://purl.org/dc/elements/1.1/\""
-        " viewBox=\"%f %f %f %f\">\n"
-        "  <metadata id=\"metadata5\">\n"
-        "    <rdf:RDF>\n"
-        "      <cc:Work rdf:about=\"\">\n"
-        "        <dc:format>image/svg+xml</dc:format>\n"
-        "        <dc:type"
-        " rdf:resource=\"http://purl.org/dc/dcmitype/StillImage\" />\n"
-        "        <dc:title></dc:title>\n"
-        "      </cc:Work>\n"
-        "    </rdf:RDF>\n"
-        "  </metadata>\n"
-        "<rect x=\"%f\" y=\"%f\" width=\"200%\" height=\"200%\" "
-        "fill=\"white\"/>\n"
-        "<g id=\"layer1\">\n",
-        -1.1f * maxVal, -1.1f * maxVal, 2 * 1.1f * maxVal, 2 * 1.1f * maxVal);
-
-    const std::string footer =
-        "</g>\n"
-        "</svg>\n";
-
-    std::ofstream svg(filename);
-    svg << header;
-    for (std::size_t i(0); i < pts.size() - 1; ++i) {
-        svg << "  "
-            << svg_path(i, static_cast<float>(i) / (pts.size() - 2), pts[i], pts[i + 1], width)
-            << "\n";
-    }
-    for (std::size_t i(0); i < pts.size(); ++i) {
-        svg << "  " << svg_circle(i, pts[i], radius) << "\n";
-    }
-    svg << footer;
-    svg.close();
-}
-
-void normalizePoints(const std::vector<Pt2>& pts, std::vector<Pt2ui>& out) {
-    const uint32_t maxVal = pow(2, nBits);
+void normalizePoints(std::unique_ptr<SFC23>& sfc, const std::vector<Pt2>& pts,
+                     std::vector<Pt2ui>& out) {
+    const uint32_t maxVal = uint32_t(1) << nBits;
 
     // Discretize points from [MIN_VAL, MAX_VAL] to [0, maxVal-1]
     const float extent = MAX_VAL - MIN_VAL;
     out.clear();
     out.reserve(out.size());
     for (const auto& p : pts) {
-        auto x = (p[0] - MIN_VAL) / extent;              // [0, 1]
-        x = std::min(uint32_t(x * maxVal), maxVal - 1);  // [0, maxVal-1]
-        auto y = (p[1] - MIN_VAL) / extent;              // [0, 1]
-        y = std::min(uint32_t(y * maxVal), maxVal - 1);  // [0, maxVal-1]
+        auto x = sfc->normalize(p[0], MIN_VAL, MAX_VAL);
+        auto y = sfc->normalize(p[1], MIN_VAL, MAX_VAL);
         out.push_back({(uint32_t)x, (uint32_t)y});
     }
 }
 
-void convertToHilbert(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims) {
-    sfc::Hilbert<float, uint64_t, 2, nBits> hilbert;
+void pointToHilbert(const std::vector<Pt2>& pts, std::vector<CodeType>& codes) {
+    std::unique_ptr<SFC23> hilbert = std::make_unique<Hilbert23>();
 
     std::vector<Pt2ui> pts_ui;
-    normalizePoints(pts, pts_ui);
+    normalizePoints(hilbert, pts, pts_ui);
 
     // Convert points to Hilbert codes
     codes.clear();
     codes.reserve(codes.size());
     for (auto& p : pts_ui) {
-        uint64_t code = hilbert.encode(p);
+        sfc::printArray(p, 2);
+        std::cout << std::endl;
+        CodeType code = hilbert->encode(p);
         codes.push_back(code);
     }
 }
 
-struct point {
-    uint32_t v[2];
-    point(uint32_t a, uint32_t b) : v{a, b} {}
-    const uint32_t operator[](int i) const { return v[i]; }
-};
+void hilbertToPoint(const std::vector<CodeType>& codes, std::vector<Pt2>& pts) {
+    std::unique_ptr<SFC23> hilbert = std::make_unique<Hilbert23>();
 
-void convertToMorton(const std::vector<Pt2>& pts, std::vector<uint64_t>& codes, const int nDims) {
-    // sfc::Zcurve<2, float, uint64_t> zcurve2;
-    std::unique_ptr<sfc::SFC<float, uint64_t, 2, nBits>> zcurve2 =
-        std::make_unique<sfc::Zcurve<float, uint64_t, 2, nBits>>();
+    pts.resize(codes.size());
+
+    for (size_t i = 0; i < codes.size(); ++i) {
+        Pt2ui up{};
+        hilbert->decode(codes[i], up);
+        Pt2 p{(float)up[0], (float)up[1]};
+        pts[i][0] = hilbert->denormalize(p[0], MIN_VAL, MAX_VAL);
+        pts[i][1] = hilbert->denormalize(p[1], MIN_VAL, MAX_VAL);
+
+        sfc::printArray(up, 2);
+        std::cout << std::endl;
+    }
+}
+
+void pointToMorton(const std::vector<Pt2>& pts, std::vector<CodeType>& codes) {
+    std::unique_ptr<SFC23> zcurve = std::make_unique<Zcurve23>();
 
     std::vector<Pt2ui> pts_ui;
-    normalizePoints(pts, pts_ui);
+    normalizePoints(zcurve, pts, pts_ui);
 
     // Convert points to Morton codes
     codes.clear();
     codes.reserve(codes.size());
     for (auto& p : pts_ui) {
-        uint64_t code = zcurve2->encode(point(p[0], p[1]));
+        CodeType code = zcurve->encode(p);
         codes.push_back(code);
     }
 }
 
-void sortByCodes(const std::vector<Pt2>& pts, const std::vector<uint64_t>& codes,
+void sortByCodes(const std::vector<Pt2>& pts, const std::vector<CodeType>& codes,
                  std::vector<Pt2>& out) {
     std::vector<Elem> pairs;
     pairs.clear();
@@ -182,13 +116,13 @@ void sortByCodes(const std::vector<Pt2>& pts, const std::vector<uint64_t>& codes
     }
 }
 
-int main(int argc, char* argv[]) {
+void testEncode() {
     std::random_device rd;
     std::mt19937 e2(0);
     std::uniform_real_distribution<float> dist(MIN_VAL, MAX_VAL);
 
     // Generate random points in float
-    std::vector<Pt2> pts(1000);
+    std::vector<Pt2> pts(100);
     std::generate(pts.begin(), pts.end(), [&] {
         Pt2 p;
         std::generate(p.begin(), p.end(), [&] { return dist(e2); });
@@ -196,32 +130,125 @@ int main(int argc, char* argv[]) {
     });
     svg_save("example_random.svg", pts);
 
-    std::vector<uint64_t> codes;
+    std::vector<CodeType> codes;
 
-    std::vector<Pt2> sorted_pts;
-    sorted_pts.reserve(pts.size());
+    std::vector<Pt2> sorted_hilbert, sorted_zcurve;
+    sorted_hilbert.reserve(pts.size());
+    sorted_zcurve.reserve(pts.size());
 
     /////////////////////////////////////////////////////////////
     // Hilbert Curve
     /////////////////////////////////////////////////////////////
     auto start = hclock::now();
-    convertToHilbert(pts, codes, nDims);
-    sortByCodes(pts, codes, sorted_pts);
+    pointToHilbert(pts, codes);
+    sortByCodes(pts, codes, sorted_hilbert);
     duration dur = hclock::now() - start;
 
     std::cout << "Took " << dur.count() << "s for Hilbert Curve" << std::endl;
-    svg_save("example_hilbert.svg", sorted_pts);
+    svg_save("example_hilbert.svg", sorted_hilbert);
 
     /////////////////////////////////////////////////////////////
     // Z-Curve
     /////////////////////////////////////////////////////////////
     start = hclock::now();
-    convertToMorton(pts, codes, nDims);
-    sortByCodes(pts, codes, sorted_pts);
+    pointToMorton(pts, codes);
+    sortByCodes(pts, codes, sorted_zcurve);
     dur = hclock::now() - start;
 
     std::cout << "Took " << dur.count() << "s for zCurve" << std::endl;
-    svg_save("example_morton.svg", sorted_pts);
+    svg_save("example_morton.svg", sorted_zcurve);
+}
+
+void testEncodeDecode() {
+    std::random_device rd;
+    std::mt19937 e2(0);
+    std::uniform_real_distribution<float> dist(MIN_VAL, MAX_VAL);
+
+    // Generate random points in float
+    // std::vector<Pt2> pts(4);
+    // std::generate(pts.begin(), pts.end(), [&] {
+    //     Pt2 p;
+    //     std::generate(p.begin(), p.end(), [&] { return dist(e2); });
+    //     return p;
+    // });
+
+    std::vector<Pt2> pts;
+    pts.push_back({-1.0f, -1.0f});
+    pts.push_back({1.0f, -1.0f});
+    pts.push_back({1.0f, 1.0f});
+    pts.push_back({-1.0f, 1.0f});
+    svg_save("example_random.svg", pts);
+
+    std::vector<CodeType> codes;
+
+    std::vector<Pt2> sorted, decoded;
+    sorted.reserve(pts.size());
+
+    /////////////////////////////////////////////////////////////
+    // Hilbert Curve
+    /////////////////////////////////////////////////////////////
+    auto start = hclock::now();
+    duration dur = hclock::now() - start;
+
+    pointToHilbert(pts, codes);
+    sortByCodes(pts, codes, sorted);
+    hilbertToPoint(codes, decoded);
+
+    for (size_t i = 0; i < sorted.size(); ++i) {
+        sfc::printArray(pts[i], nDims);
+        std::cout << " -> ";
+        sfc::printArray(decoded[i], nDims);
+        std::cout << std::endl;
+    }
+
+    std::cout << "Took " << dur.count() << "s for Hilbert Curve" << std::endl;
+    svg_save("example_hilbert.svg", sorted);
+}
+
+void testDecode() {
+    std::random_device rd;
+    std::mt19937 e2(0);
+
+    CodeType maxVal = -1;
+    std::uniform_int_distribution<CodeType> dist(0, maxVal);
+
+    // Generate random points in float
+    std::vector<CodeType> codes(100);
+    std::generate(codes.begin(), codes.end(), [&] { return dist(e2); });
+    std::sort(codes.begin(), codes.end());
+    // svg_save("example_random.svg", pts);
+
+    // std::vector<uint64_t> codes;
+
+    std::vector<Pt2> hilbert, zcurve;
+    hilbert.reserve(codes.size());
+    zcurve.reserve(codes.size());
+
+    /////////////////////////////////////////////////////////////
+    // Hilbert Curve
+    /////////////////////////////////////////////////////////////
+    auto start = hclock::now();
+    hilbertToPoint(codes, hilbert);
+    duration dur = hclock::now() - start;
+
+    std::cout << "Took " << dur.count() << "s for Hilbert Curve" << std::endl;
+    svg_save("example_hilbert.svg", hilbert);
+
+    // /////////////////////////////////////////////////////////////
+    // // Z-Curve
+    // /////////////////////////////////////////////////////////////
+    // start = hclock::now();
+    // pointToMorton(pts, codes);
+    // sortByCodes(pts, codes, sorted_zcurve);
+    // dur = hclock::now() - start;
+
+    // std::cout << "Took " << dur.count() << "s for zCurve" << std::endl;
+    // svg_save("example_morton.svg", sorted_zcurve);
+}
+
+int main(int argc, char* argv[]) {
+    // testDecode();
+    testEncodeDecode();
 
     return EXIT_SUCCESS;
 }
